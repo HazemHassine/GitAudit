@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: maintainer
+      POSTGRES_USER: maintainer
+      POSTGRES_PASSWORD: maintainer
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - maintainer-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U maintainer"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  maintainer-db:
