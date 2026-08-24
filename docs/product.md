@@ -12,7 +12,7 @@ Milestone 1 implements Command Center, Repositories, repository detail, scan rep
 
 ## Primary journeys
 
-1. **Onboard:** install the GitHub App, select repositories, confirm read-only permissions, and land on an inventory whose unscanned state is explicit.
+1. **Onboard:** install the GitHub App, select its authorized repositories, confirm read-only permissions, and land on an automatically scanned inventory. Repositories explicitly excluded in the console retain history and stay excluded from later syncs.
 2. **Understand health:** open a repository, read status and freshness, separate build/CI from deployment, expand a dimension to see deterministic rules and source evidence, and compare historical snapshots.
 3. **Investigate (M2+):** select a detected problem, start a bounded run, follow live structured events, inspect reproduction and evidence, pause/stop, and receive a durable report.
 4. **Review a fix (M4+):** compare before/after validation, inspect diff/risk/policy/remaining uncertainty, then approve PR creation or reject/request deeper investigation.
@@ -33,6 +33,11 @@ The command center answers in order: Is the maintainer active? What changed? Whi
 The visual grammar uses five labeled layers: **PULSE** (observed health), **TRACE** (agent activity), **EVIDENCE** (immutable observations), **ACTION** (proposed/performed mutation), and **VERIFY** (before/after proof). Color is redundant with icons/text; motion is reserved for currently active phases and new events; reduced-motion preferences are honored.
 
 Repository detail begins with identity, freshness, default SHA, last CI/deployment observation, and health trend. Dimensions are compact rows with score/status and observation freshness. Expansion shows the rule ledger, not a generated explanation. Deployment remains `UNKNOWN` until configured or observed.
+
+Overall score describes the quality of observed evidence; evidence coverage is shown separately.
+Missing required CI evidence gates repository status to `ATTENTION`, even when the available
+evidence scores perfectly. CI evidence must refer to the exact default-branch SHA recorded by the
+scan.
 
 ## Transparency model
 

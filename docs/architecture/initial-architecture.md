@@ -54,13 +54,11 @@ sequenceDiagram
   participant API
   participant GitHub
   participant DB
-  User->>Web: Authorize/select repository
-  Web->>API: Register installation repository
-  API->>GitHub: Verify access and metadata
-  API->>DB: Persist repository
-  User->>Web: Run scan
-  Web->>API: POST /repositories/{id}/scans
-  API->>GitHub: Fetch metadata, commits, Actions runs
+  User->>GitHub: Authorize installation repositories
+  API->>GitHub: List installation repositories
+  API->>DB: Sync active inventory
+  API->>API: Queue unscanned/stale repositories
+  API->>GitHub: Fetch metadata, exact-SHA checks, Actions history
   API->>API: Normalize signals and score rules
   API->>DB: Commit scan, signals, report
   API-->>Web: Explainable health report
@@ -130,6 +128,6 @@ Milestone 2 adds problems, evidence, and run events. Maintenance runs/checkpoint
 
 ## MVP boundary and tradeoffs
 
-Milestone 1 ends at read-only GitHub repository visibility, manual scans, CI observations, explainable scoring, reports, and history. It does not clone or execute repositories, diagnose with AI, mutate code, or send notifications.
+Milestone 1 ends at read-only GitHub repository visibility, automatic/manual scans, CI observations, explainable scoring, reports, and history. It does not clone or execute repositories, diagnose with AI, mutate code, or send notifications.
 
 The modular monolith sacrifices independent scaling for fast iteration and transactional consistency. In-process scan execution is simple but not crash-durable, so production scheduling waits for a durable worker boundary. GitHub App setup costs more initially than a PAT but sharply narrows permissions. Next.js and FastAPI duplicate some type definitions; an OpenAPI-generated client will keep the boundary synchronized.

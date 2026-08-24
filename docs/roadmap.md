@@ -11,11 +11,11 @@ Each slice must be demoable, observable, tested, and honest about unavailable da
 **Slices**
 
 1. Foundation: local Postgres, typed configuration, migrations, structured logs, health endpoint, Next.js shell.
-2. Repository inventory: GitHub App installation/repository selection, metadata sync, repository list/detail.
-3. Scan: default-branch SHA and recent Actions runs, normalized signals, atomic persisted snapshot.
+2. Repository inventory: GitHub App installation/repository authorization, automatic metadata sync, repository list/detail, and retained-history exclusion.
+3. Scan: exact default-branch SHA checks, recent Actions runs, normalized partial/failure signals, and persisted scan attempts.
 4. Explainability: versioned scoring rules, evidence drawer, health dimensions, and report history.
 
-**Backend:** domain models, SQLAlchemy repositories, GitHub port/adapter, scanner, scorer, REST resources, error/rate-limit behavior. **Frontend:** command-center shell, inventory, detail, score breakdown, scan history, clear unknown/unavailable states. **Tests:** scorer unit/property cases, GitHub contract fixtures, persistence integration tests, API tests, and one browser happy path. **Complete when:** a fresh setup can authorize and scan a real repository; reruns retain history; every point has a rule/evidence reference; no write permission is requested; telemetry identifies scan failures.
+**Backend:** domain models, SQLAlchemy repositories, GitHub port/adapter, scanner, scorer, REST resources, error/rate-limit behavior. **Frontend:** command-center shell, inventory, detail, score breakdown, scan history, clear unknown/unavailable states. **Tests:** scorer unit/property cases, GitHub contract fixtures, persistence integration tests, API tests, and one browser happy path. **Complete when:** a fresh setup can authorize and automatically scan every installation repository; reruns retain history; every point has a rule/evidence reference; no GitHub write permission is requested; telemetry identifies scan failures.
 
 ## M2 — Reproduction engine
 

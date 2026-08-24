@@ -5,9 +5,11 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.pyc
+*.tsbuildinfo
 node_modules/
 .next/
+playwright-report/
+test-results/
 dist/
 coverage/
 .DS_Store
-

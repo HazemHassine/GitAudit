@@ -42,3 +42,26 @@ def test_unknown_and_unavailable_are_not_scored_as_healthy() -> None:
     security = next(item for item in report.dimensions if item.dimension == HealthDimension.SECURITY)
     assert security.status == SignalStatus.UNAVAILABLE
     assert security.contributions == []
+
+
+def test_missing_required_ci_gates_health_even_when_readme_passes() -> None:
+    report = score_signals([
+        signal(HealthDimension.CI, "default_branch_ci", SignalStatus.UNKNOWN),
+        signal(HealthDimension.DOCUMENTATION, "readme_present", SignalStatus.PASS),
+    ])
+
+    assert report.overall_score == 100
+    assert report.coverage_percent == 29
+    assert report.repository_status == RepositoryStatus.ATTENTION
+    assert "Required ci evidence is unknown" in report.status_reasons
+
+
+def test_required_ci_failure_is_degraded() -> None:
+    report = score_signals([
+        signal(HealthDimension.CI, "default_branch_ci", SignalStatus.FAIL),
+        signal(HealthDimension.CI, "recent_ci_reliability", SignalStatus.PASS, 1.0),
+        signal(HealthDimension.DOCUMENTATION, "readme_present", SignalStatus.PASS),
+    ])
+
+    assert report.coverage_percent == 100
+    assert report.repository_status == RepositoryStatus.DEGRADED

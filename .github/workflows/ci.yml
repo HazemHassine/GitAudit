@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: maintainer
+          POSTGRES_USER: maintainer
+          POSTGRES_PASSWORD: maintainer
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U maintainer"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://maintainer:maintainer@localhost:5433/maintainer
+      GITHUB_AUTH_MODE: auto
+      AUTO_SCAN_ON_STARTUP: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.19"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install
+        run: make install
+      - name: Verify migration
+        run: make db-upgrade
+      - name: Unit, integration, lint, and type checks
+        run: make test
+      - name: Production web build
+        run: make build
+      - name: Install browser
+        run: npx --prefix apps/web playwright install --with-deps chromium
+      - name: Browser happy path
+        run: make test-e2e

@@ -1,14 +1,16 @@
-from fastapi.testclient import TestClient
-
-from maintainer_api.main import app
+from maintainer_api.main import app, healthcheck
 
 
-def test_healthcheck() -> None:
-    assert TestClient(app).get("/healthz").json()["status"] == "ok"
+async def test_healthcheck() -> None:
+    assert (await healthcheck())["status"] == "ok"
 
 
 def test_openapi_exposes_read_only_milestone_one_resources() -> None:
-    paths = TestClient(app).get("/openapi.json").json()["paths"]
+    paths = app.openapi()["paths"]
     assert "/api/v1/github/repositories" in paths
     assert "/api/v1/repositories/{repository_id}/scans" in paths
-    assert "delete" not in paths["/api/v1/repositories/{repository_id}"]
+    assert "/api/v1/repositories/{repository_id}/scans/{scan_id}" in paths
+    assert "/api/v1/sync" in paths
+    assert "/api/v1/settings/github" in paths
+    # DELETE excludes a repository locally; no GitHub mutation endpoint exists.
+    assert "delete" in paths["/api/v1/repositories/{repository_id}"]

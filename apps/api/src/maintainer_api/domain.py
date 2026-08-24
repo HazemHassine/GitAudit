@@ -25,10 +25,23 @@ class HealthDimension(StrEnum):
 
 class RepositoryStatus(StrEnum):
     UNSCANNED = "unscanned"
+    SCANNING = "scanning"
     HEALTHY = "healthy"
     ATTENTION = "attention"
     DEGRADED = "degraded"
     SCAN_FAILED = "scan_failed"
+
+
+class ScanStatus(StrEnum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+    PARTIAL = "partial"
+    FAILED = "failed"
+
+
+class MonitoringState(StrEnum):
+    ACTIVE = "active"
+    EXCLUDED = "excluded"
 
 
 class EvidenceRef(BaseModel):
@@ -65,9 +78,11 @@ class DimensionScore(BaseModel):
 class HealthReport(BaseModel):
     score_version: str
     overall_score: int = Field(ge=0, le=100)
+    coverage_percent: int = Field(default=0, ge=0, le=100)
     repository_status: RepositoryStatus
     dimensions: list[DimensionScore]
     unavailable_dimensions: list[HealthDimension]
+    status_reasons: list[str] = Field(default_factory=list)
 
 
 class RepositorySummary(BaseModel):
@@ -82,6 +97,10 @@ class RepositorySummary(BaseModel):
     default_branch_sha: str | None = None
     last_commit_at: datetime | None = None
     last_scanned_at: datetime | None = None
+    evidence_stale: bool = False
+    latest_scan_status: ScanStatus | None = None
+    last_scan_error: str | None = None
+    monitoring_state: MonitoringState = MonitoringState.ACTIVE
     health: HealthReport | None = None
 
     @property
@@ -117,6 +136,30 @@ class ScanSnapshot(BaseModel):
     repository_id: UUID
     started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
-    base_sha: str
-    signals: list[HealthSignal]
-    report: HealthReport
+    base_sha: str | None = None
+    status: ScanStatus = ScanStatus.COMPLETED
+    signals: list[HealthSignal] = Field(default_factory=list)
+    report: HealthReport | None = None
+    source_failures: list[str] = Field(default_factory=list)
+    error: str | None = None
+
+
+class SyncStatus(BaseModel):
+    running: bool = False
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    discovered: int = 0
+    monitored: int = 0
+    queued: int = 0
+    scanned: int = 0
+    failed: int = 0
+    error: str | None = None
+
+
+class GitHubSettingsStatus(BaseModel):
+    configured: bool
+    auth_mode: str
+    app_install_url: str | None = None
+    auto_scan_on_startup: bool
+    auto_scan_interval_minutes: int
+    scan_stale_after_minutes: int
