@@ -3,9 +3,17 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ActivityFeed } from "./components/ActivityFeed";
+import { ContributionGraph } from "./components/ContributionGraph";
+import { LanguageBar } from "./components/LanguageBar";
 import { Navigation } from "./components/Navigation";
+import { PunchCard } from "./components/PunchCard";
+import { type FilterState, RepoFilters, applyFilters } from "./components/RepoFilters";
+import { StatsCards } from "./components/StatsCards";
 import {
   type Account,
+  type DashboardActivity,
+  type DashboardStats,
   type GitHubSettings,
   type Repository,
   type Scan,
@@ -27,6 +35,19 @@ export default function CommandCenter() {
   const [busy, setBusy] = useState<string | null>("loading");
   const [error, setError] = useState<string | null>(null);
   const [githubError, setGitHubError] = useState<string | null>(null);
+
+  // Dashboard data
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [dashboardActivity, setDashboardActivity] = useState<DashboardActivity | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Filters
+  const [filters, setFilters] = useState<FilterState>({
+    search: "",
+    visibility: "all",
+    language: null,
+    status: null,
+  });
 
   const loadLocal = useCallback(async (quiet = false) => {
     if (!quiet) setError(null);
@@ -59,13 +80,27 @@ export default function CommandCenter() {
     }
   }, []);
 
+  const loadDashboard = useCallback(async () => {
+    try {
+      const [stats, activity] = await Promise.allSettled([
+        request<DashboardStats>("/api/v1/dashboard/stats"),
+        request<DashboardActivity>("/api/v1/dashboard/activity"),
+      ]);
+      if (stats.status === "fulfilled") setDashboardStats(stats.value);
+      if (activity.status === "fulfilled") setDashboardActivity(activity.value);
+    } catch {
+      // Dashboard data is optional — fail silently
+    }
+  }, []);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadLocal();
       void loadIdentity();
+      void loadDashboard();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadIdentity, loadLocal]);
+  }, [loadIdentity, loadLocal, loadDashboard]);
 
   useEffect(() => {
     if (!sync?.running) return;
@@ -119,6 +154,23 @@ export default function CommandCenter() {
     }
   }
 
+  async function refreshActivity() {
+    setRefreshing(true);
+    try {
+      const activity = await request<DashboardActivity>("/api/v1/dashboard/refresh", {
+        method: "POST",
+      });
+      setDashboardActivity(activity);
+      // Also refresh stats since repos may have changed
+      const stats = await request<DashboardStats>("/api/v1/dashboard/stats");
+      setDashboardStats(stats);
+    } catch {
+      // Silently fail — data stays as is
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   const health = selected?.health;
   const displayStatus = selected ? repositoryDisplayStatus(selected) : "unscanned";
   const counts = useMemo(
@@ -140,6 +192,11 @@ export default function CommandCenter() {
     [repositories],
   );
 
+  const filteredRepositories = useMemo(
+    () => applyFilters(repositories, filters),
+    [repositories, filters],
+  );
+
   return (
     <main className="shell">
       <Navigation active="pulse" />
@@ -147,8 +204,10 @@ export default function CommandCenter() {
       <section className="workspace">
         <header>
           <div>
-            <p className="eyebrow">COMMAND CENTER / PERSISTED GITHUB EVIDENCE</p>
-            <h1>Repository pulse</h1>
+            <p className="eyebrow">COMMAND CENTER / GITHUB DASHBOARD</p>
+            <h1>
+              {account ? `@${account.login}` : "Repository pulse"}
+            </h1>
           </div>
           <div className="observer">
             <span>READ ONLY</span>
@@ -215,6 +274,43 @@ export default function CommandCenter() {
           </section>
         )}
 
+        {/* Dashboard Stats */}
+        {dashboardStats && <StatsCards stats={dashboardStats} />}
+
+        {/* Contribution Calendar */}
+        {dashboardActivity && dashboardActivity.contribution_calendar.weeks.length > 0 && (
+          <ContributionGraph calendar={dashboardActivity.contribution_calendar} />
+        )}
+
+        {/* Charts Row: Punch Card + Language Distribution */}
+        {(dashboardActivity?.punch_card.length || dashboardStats?.languages) && (
+          <div className="chartsGrid">
+            {dashboardActivity && dashboardActivity.punch_card.length > 0 && (
+              <PunchCard data={dashboardActivity.punch_card} />
+            )}
+            {dashboardStats && Object.keys(dashboardStats.languages).length > 0 && (
+              <LanguageBar languages={dashboardStats.languages} />
+            )}
+          </div>
+        )}
+
+        {/* Refresh Activity */}
+        {dashboardActivity && (
+          <div className="dashboardHeader">
+            <small style={{ font: "9px DM Mono", color: "var(--muted)", textTransform: "uppercase" }}>
+              Activity data {dashboardActivity.fetched_at ? `cached ${relativeTime(dashboardActivity.fetched_at)}` : ""}
+            </small>
+            <button
+              className="refreshButton"
+              disabled={refreshing}
+              onClick={() => void refreshActivity()}
+            >
+              {refreshing ? "Refreshing…" : "Refresh activity"}
+            </button>
+          </div>
+        )}
+
+        {/* Hero Pulse (selected repo detail) */}
         <section className="hero" id="pulse">
           <div className="scoreBlock">
             <p className="label">
@@ -274,19 +370,33 @@ export default function CommandCenter() {
           </div>
         </section>
 
+        {/* Repositories with Filters */}
         <section className="grid" id="repositories">
           <div className="panel repositories">
             <div className="sectionTitle">
               <span>REPOSITORIES</span>
-              <small>{repositories.length} AUTO-MONITORED</small>
+              <small>{filteredRepositories.length} OF {repositories.length} MONITORED</small>
             </div>
+
+            <RepoFilters
+              repositories={repositories}
+              filters={filters}
+              onChange={setFilters}
+            />
+
+            {filteredRepositories.length === 0 && repositories.length > 0 && (
+              <div className="panelEmpty">
+                <b>No matching repositories</b>
+                <span>Try adjusting your filters.</span>
+              </div>
+            )}
             {repositories.length === 0 && !sync?.running && (
               <div className="panelEmpty">
                 <b>No persisted repositories</b>
                 <span>Configure GitHub or start a full inventory scan.</span>
               </div>
             )}
-            {repositories.map((repository) => {
+            {filteredRepositories.map((repository) => {
               const repositoryStatus = repositoryDisplayStatus(repository);
               return (
                 <article
@@ -304,6 +414,10 @@ export default function CommandCenter() {
                     <span>
                       <span className="repoName">
                         {repository.owner} / <b>{repository.name}</b>
+                        {" "}
+                        <span className="visibilityBadge">
+                          {repository.private ? "🔒 Private" : "🌐 Public"}
+                        </span>
                       </span>
                       <small>
                         {repository.default_branch} · {repository.primary_language ?? "Unknown"} ·{" "}
@@ -370,6 +484,11 @@ export default function CommandCenter() {
             )}
           </div>
         </section>
+
+        {/* Activity Feed */}
+        {dashboardActivity && dashboardActivity.events.length > 0 && (
+          <ActivityFeed events={dashboardActivity.events} />
+        )}
 
         <footer>
           <span>OSS MAINTAINER / TRUSTWORTHY SCANS</span>

@@ -14,6 +14,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
+from .activity import ActivityService
 from .config import get_settings
 from .coordinator import RepositorySyncCoordinator
 from .curation import (
@@ -36,6 +37,8 @@ from .domain import (
     AISettingsStatus,
     ConnectRepositoryRequest,
     CurationAssessment,
+    DashboardActivity,
+    DashboardStats,
     DiscoveredRepository,
     GitHubAccount,
     GitHubSettingsStatus,
@@ -65,6 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     session_factory = build_session_factory(engine)
     github_reader = HttpGitHubReader(settings, client)
     repository_service = RepositoryService(github_reader, settings.scan_stale_after_minutes)
+    activity_service = ActivityService(github_reader, settings.scan_stale_after_minutes)
     curation_agent = build_curation_agent(settings) if settings.openai_configured else None
     curation_service = CurationService(github_reader, settings.openai_model, curation_agent)
     async with session_factory() as recovery_session:
@@ -82,6 +86,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.engine = engine
     app.state.session_factory = session_factory
     app.state.repository_service = repository_service
+    app.state.activity_service = activity_service
     app.state.curation_service = curation_service
     app.state.sync_coordinator = coordinator
     coordinator.start()
@@ -148,10 +153,15 @@ def curation(request: Request) -> CurationService:
     return request.app.state.curation_service
 
 
+def activity(request: Request) -> ActivityService:
+    return request.app.state.activity_service
+
+
 SessionDependency = Annotated[AsyncSession, Depends(database_session)]
 ServiceDependency = Annotated[RepositoryService, Depends(service)]
 CoordinatorDependency = Annotated[RepositorySyncCoordinator, Depends(sync_coordinator)]
 CurationDependency = Annotated[CurationService, Depends(curation)]
+ActivityDependency = Annotated[ActivityService, Depends(activity)]
 
 
 @app.exception_handler(GitHubError)
@@ -406,3 +416,35 @@ async def assessment_history(
         )
     ).all()
     return [assessment_snapshot(item) for item in records]
+
+
+@app.get("/api/v1/dashboard/stats", response_model=DashboardStats, tags=["dashboard"])
+async def dashboard_stats(session: SessionDependency, activity_service: ActivityDependency) -> DashboardStats:
+    return await activity_service.dashboard_stats(session)
+
+@app.get("/api/v1/dashboard/activity", response_model=DashboardActivity, tags=["dashboard"])
+async def dashboard_activity(
+    session: SessionDependency,
+    activity_service: ActivityDependency,
+    repository_service: ServiceDependency,
+) -> DashboardActivity:
+    account = await repository_service.account()
+    return await activity_service.dashboard_activity(session, account.login)
+
+@app.post("/api/v1/dashboard/refresh", response_model=DashboardActivity, status_code=202, tags=["dashboard"])
+async def refresh_dashboard(
+    session: SessionDependency,
+    activity_service: ActivityDependency,
+    repository_service: ServiceDependency,
+) -> DashboardActivity:
+    account = await repository_service.account()
+    return await activity_service.refresh_all(session, account.login)
+
+@app.get("/api/v1/repositories/{repository_id}/activity", tags=["dashboard"])
+async def repository_activity(
+    repository_id: UUID,
+    session: SessionDependency,
+    activity_service: ActivityDependency,
+) -> dict:
+    repository = await find_repository(session, repository_id)
+    return await activity_service.repository_activity(session, repository)

@@ -199,6 +199,7 @@ class RepositoryService:
                     private=discovered.private,
                     html_url=discovered.html_url,
                     monitoring_state=MonitoringState.ACTIVE.value,
+                    stars=int(data.get("stargazers_count", 0)),
                 )
                 session.add(record)
                 active.append(record)
@@ -210,6 +211,7 @@ class RepositoryService:
             record.primary_language = discovered.primary_language
             record.private = discovered.private
             record.html_url = discovered.html_url
+            record.stars = int(data.get("stargazers_count", 0))
             if record.monitoring_state == MonitoringState.ACTIVE.value:
                 active.append(record)
         await session.commit()
@@ -239,6 +241,7 @@ class RepositoryService:
                 private=bool(data.get("private", False)),
                 html_url=_text(data.get("html_url")),
                 monitoring_state=MonitoringState.ACTIVE.value,
+                stars=int(data.get("stargazers_count", 0)),
             )
             session.add(record)
         else:
@@ -250,6 +253,7 @@ class RepositoryService:
             record.private = bool(data.get("private", False))
             record.html_url = _text(data.get("html_url"))
             record.monitoring_state = MonitoringState.ACTIVE.value
+            record.stars = int(data.get("stargazers_count", 0))
         await session.commit()
         await session.refresh(record)
         return repository_summary(record, self._stale_after_minutes)
@@ -342,6 +346,7 @@ class RepositoryService:
         record.latest_scan_status = status.value
         record.last_scan_error = None
         record.latest_health = report.model_dump(mode="json")
+        record.stars = int(data.get("stargazers_count", 0))
         await session.commit()
         await session.refresh(scan)
         SCAN_TOTAL.labels(status=status.value).inc()

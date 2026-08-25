@@ -161,6 +161,69 @@ export type CurationAssessment = {
   error: string | null;
 };
 
+export type ContributionDay = {
+  date: string;
+  count: number;
+  level: number;
+};
+
+export type ContributionWeek = {
+  days: ContributionDay[];
+};
+
+export type ContributionCalendar = {
+  total: number;
+  weeks: ContributionWeek[];
+};
+
+export type CommitWeek = {
+  week: number;
+  total: number;
+  days: number[];
+};
+
+export type PunchCardEntry = {
+  day: number;
+  hour: number;
+  commits: number;
+};
+
+export type RecentCommit = {
+  sha: string;
+  message: string;
+  author: string;
+  avatar_url: string | null;
+  authored_at: string;
+  repository: string;
+  url: string;
+};
+
+export type GitHubEvent = {
+  id: string;
+  type: string;
+  repo: string;
+  created_at: string;
+  summary: string;
+};
+
+export type DashboardStats = {
+  total_repositories: number;
+  public_count: number;
+  private_count: number;
+  languages: Record<string, number>;
+  total_stars: number;
+  health_distribution: Record<string, number>;
+};
+
+export type DashboardActivity = {
+  contribution_calendar: ContributionCalendar;
+  weekly_commits: CommitWeek[];
+  punch_card: PunchCardEntry[];
+  recent_commits: RecentCommit[];
+  events: GitHubEvent[];
+  fetched_at: string | null;
+};
+
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...init,

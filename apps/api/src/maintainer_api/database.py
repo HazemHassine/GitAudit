@@ -41,6 +41,7 @@ class RepositoryRecord(Base):
     latest_scan_status: Mapped[str | None] = mapped_column(String(32), index=True)
     last_scan_error: Mapped[str | None] = mapped_column(Text)
     monitoring_state: Mapped[str] = mapped_column(String(32), default="active", index=True)
+    stars: Mapped[int] = mapped_column(default=0)
 
     scans: Mapped[list["RepositoryScanRecord"]] = relationship(
         back_populates="repository", cascade="all, delete-orphan"
@@ -84,6 +85,24 @@ class RepositoryAssessmentRecord(Base):
     error: Mapped[str | None] = mapped_column(Text)
 
     repository: Mapped[RepositoryRecord] = relationship(back_populates="assessments")
+
+
+class ProfileActivityRecord(Base):
+    __tablename__ = "profile_activity"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    login: Mapped[str] = mapped_column(String(100), unique=True)
+    contribution_calendar: Mapped[dict | None] = mapped_column(JSON_DOCUMENT)
+    events: Mapped[list | None] = mapped_column(JSON_DOCUMENT)
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+class RepositoryActivityRecord(Base):
+    __tablename__ = "repository_activity"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    repository_id: Mapped[UUID] = mapped_column(ForeignKey("repositories.id"), unique=True, index=True)
+    weekly_commits: Mapped[list | None] = mapped_column(JSON_DOCUMENT)
+    punch_card: Mapped[list | None] = mapped_column(JSON_DOCUMENT)
+    recent_commits: Mapped[list | None] = mapped_column(JSON_DOCUMENT)
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 def build_engine(settings: Settings) -> AsyncEngine:

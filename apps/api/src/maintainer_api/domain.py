@@ -236,3 +236,58 @@ class CurationAssessment(BaseModel):
     evidence: dict[str, object] = Field(default_factory=dict)
     analysis: CurationAnalysis | None = None
     error: str | None = None
+
+
+class ContributionDay(BaseModel):
+    date: str
+    count: int
+    level: int = 0
+
+class ContributionWeek(BaseModel):
+    days: list[ContributionDay]
+
+class ContributionCalendar(BaseModel):
+    total: int = 0
+    weeks: list[ContributionWeek] = Field(default_factory=list)
+
+class CommitWeek(BaseModel):
+    week: int
+    total: int
+    days: list[int] = Field(default_factory=list)
+
+class PunchCardEntry(BaseModel):
+    day: int
+    hour: int
+    commits: int
+
+class RecentCommit(BaseModel):
+    sha: str
+    message: str
+    author: str
+    avatar_url: str | None = None
+    authored_at: str
+    repository: str
+    url: str
+
+class GitHubEvent(BaseModel):
+    id: str
+    type: str
+    repo: str
+    created_at: str
+    summary: str
+
+class DashboardStats(BaseModel):
+    total_repositories: int = 0
+    public_count: int = 0
+    private_count: int = 0
+    languages: dict[str, int] = Field(default_factory=dict)
+    total_stars: int = 0
+    health_distribution: dict[str, int] = Field(default_factory=dict)
+
+class DashboardActivity(BaseModel):
+    contribution_calendar: ContributionCalendar = Field(default_factory=ContributionCalendar)
+    weekly_commits: list[CommitWeek] = Field(default_factory=list)
+    punch_card: list[PunchCardEntry] = Field(default_factory=list)
+    recent_commits: list[RecentCommit] = Field(default_factory=list)
+    events: list[GitHubEvent] = Field(default_factory=list)
+    fetched_at: str | None = None

@@ -262,3 +262,72 @@ footer { display:flex;justify-content:space-between;color:#929792;font:9px DM Mo
   .curationHead { display:grid; }
   .curationVerdict { align-items:flex-start; }
 }
+
+/* Dashboard redesign */
+
+/* Stats cards row */
+.statsRow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border: 1px solid var(--line); background: var(--panel); margin: 20px 0; }
+.statCard { padding: 20px; border-right: 1px solid var(--line); }
+.statCard:last-child { border-right: 0; }
+.statLabel { font: 500 8px DM Mono; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+.statValue { font: 300 clamp(28px, 4vw, 42px)/1 DM Mono; letter-spacing: -.05em; margin: 12px 0 0; }
+
+/* Contribution graph */
+.contributionGraph { border: 1px solid var(--line); background: var(--panel); padding: 24px; margin-bottom: 20px; }
+.contributionGrid { display: grid; grid-template-columns: 28px repeat(53, 1fr); gap: 3px; overflow-x: auto; }
+.contributionCell { width: 11px; height: 11px; border-radius: 2px; }
+.contributionDayLabel { font: 8px DM Mono; color: var(--muted); display: flex; align-items: center; }
+.contributionMonths { display: grid; grid-template-columns: 28px repeat(53, 1fr); gap: 3px; margin-bottom: 6px; }
+.contributionMonths span { font: 8px DM Mono; color: var(--muted); }
+.contributionTotal { font: 10px DM Mono; color: var(--muted); margin-top: 12px; }
+
+/* Charts grid (punch card + language bar) */
+.chartsGrid { display: grid; grid-template-columns: 1.3fr .7fr; gap: 20px; margin-bottom: 20px; }
+.chartPanel { border: 1px solid var(--line); background: var(--panel); padding: 24px; }
+
+/* Language bar */
+.languageTrack { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 16px 0; }
+.languageTrack > span { min-width: 3px; }
+.languageLegend { display: flex; flex-wrap: wrap; gap: 14px; }
+.languageLegend > span { display: flex; align-items: center; gap: 6px; font: 9px DM Mono; color: var(--muted); }
+.languageDot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* Activity feed */  
+.activityPanel { border: 1px solid var(--line); background: var(--panel); padding: 24px; margin-top: 20px; }
+.activityList { max-height: 400px; overflow-y: auto; }
+/* Reuse .trace styling for timeline */
+
+/* Repo filters */
+.filterBar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.filterBar input { flex: 1; min-width: 180px; border: 1px solid var(--line); background: var(--paper); padding: 9px 11px; outline: none; font: 10px DM Mono; }
+.filterBar input:focus { border-color: var(--ink); }
+.filterBar select { border: 1px solid var(--line); background: var(--panel); padding: 8px 10px; font: 9px DM Mono; text-transform: uppercase; outline: none; cursor: pointer; appearance: auto; }
+.filterPills { display: flex; gap: 0; }
+.filterPill { border: 1px solid var(--line); border-right: 0; background: var(--panel); color: var(--muted); padding: 8px 12px; cursor: pointer; font: 500 8px DM Mono; text-transform: uppercase; }
+.filterPill:last-child { border-right: 1px solid var(--line); }
+.filterPill.active { background: var(--ink); color: white; border-color: var(--ink); }
+
+/* Repo card updates */
+.visibilityBadge { font: 7px DM Mono; text-transform: uppercase; padding: 3px 5px; border: 1px solid var(--line); color: var(--muted); }
+
+/* Dashboard section header with refresh */
+.dashboardHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.refreshButton { border: 1px solid var(--line); background: var(--panel); color: var(--muted); padding: 7px 10px; cursor: pointer; font: 500 8px DM Mono; text-transform: uppercase; }
+.refreshButton:hover { border-color: var(--ink); color: var(--ink); }
+.refreshButton:disabled { opacity: .5; cursor: wait; }
+
+/* Recharts overrides */
+.recharts-cartesian-axis-tick-value { font-family: 'DM Mono', monospace !important; font-size: 8px !important; fill: var(--muted) !important; }
+.recharts-tooltip-wrapper { font-family: 'DM Mono', monospace !important; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .chartsGrid { grid-template-columns: 1fr; }
+  .statsRow { grid-template-columns: repeat(2, 1fr); }
+  .statsRow .statCard:nth-child(2) { border-right: 0; }
+}
+@media (max-width: 620px) {
+  .statsRow { grid-template-columns: 1fr; }
+  .statCard { border-right: 0; border-bottom: 1px solid var(--line); }
+  .filterBar { flex-direction: column; align-items: stretch; }
+}

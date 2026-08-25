@@ -33,6 +33,11 @@ class GitHubReader(Protocol):
     ) -> list[dict[str, object]]: ...
     async def readme_exists(self, owner: str, name: str) -> bool: ...
     async def readme_content(self, owner: str, name: str) -> str | None: ...
+    async def commit_activity(self, owner: str, name: str) -> list[dict[str, object]]: ...
+    async def punch_card(self, owner: str, name: str) -> list[list[int]]: ...
+    async def recent_commits(self, owner: str, name: str, branch: str, count: int = 30) -> list[dict[str, object]]: ...
+    async def user_events(self, login: str, count: int = 50) -> list[dict[str, object]]: ...
+    async def contribution_calendar(self, login: str) -> dict[str, object]: ...
 
 
 class HttpGitHubReader:
@@ -260,3 +265,48 @@ class HttpGitHubReader:
             return base64.b64decode(content, validate=False).decode("utf-8", errors="replace")
         except ValueError as exc:
             raise GitHubError("GitHub returned invalid README content") from exc
+
+    async def _get_stats(self, path: str) -> list | dict:
+        """Fetch GitHub stats endpoint with 202 retry."""
+        for attempt in range(4):
+            response = await self._response(path)
+            if response.status_code == 200:
+                return response.json()
+            if response.status_code == 202 and attempt < 3:
+                await asyncio.sleep(2)
+                continue
+            self._raise_for_status(response)
+        return []
+
+    async def commit_activity(self, owner: str, name: str) -> list[dict[str, object]]:
+        data = await self._get_stats(f"/repos/{owner}/{name}/stats/commit_activity")
+        return [item for item in data if isinstance(item, dict)] if isinstance(data, list) else []
+
+    async def punch_card(self, owner: str, name: str) -> list[list[int]]:
+        data = await self._get_stats(f"/repos/{owner}/{name}/stats/punch_card")
+        return [item for item in data if isinstance(item, list)] if isinstance(data, list) else []
+
+    async def recent_commits(self, owner: str, name: str, branch: str, count: int = 30) -> list[dict[str, object]]:
+        data = await self._get(f"/repos/{owner}/{name}/commits", {"sha": branch, "per_page": str(count)})
+        return [item for item in data if isinstance(item, dict)] if isinstance(data, list) else []
+
+    async def user_events(self, login: str, count: int = 50) -> list[dict[str, object]]:
+        data = await self._get(f"/users/{login}/events", {"per_page": str(count)})
+        return [item for item in data if isinstance(item, dict)] if isinstance(data, list) else []
+
+    async def contribution_calendar(self, login: str) -> dict[str, object]:
+        if self._settings.resolved_github_auth_mode == "app":
+            raise GitHubError("GraphQL contribution calendar requires a PAT, app authentication is not supported")
+        query = {
+            "query": f'{{ user(login: "{login}") {{ contributionsCollection {{ contributionCalendar {{ totalContributions weeks {{ contributionDays {{ date contributionCount color }} }} }} }} }} }}'
+        }
+        response = await self._client.post(
+            f"{self._base_url}/graphql",
+            headers=await self._headers(app=False),
+            json=query,
+        )
+        self._raise_for_status(response, "fetching contribution calendar")
+        data = response.json()
+        if not isinstance(data, dict):
+            raise GitHubError("GitHub returned an unexpected GraphQL response")
+        return data
