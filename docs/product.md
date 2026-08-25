@@ -2,21 +2,22 @@
 
 ## Product promise
 
-OSS Maintainer is an evidence-first reliability console for one developer's explicitly authorized repositories. It makes repository health legible, investigates concrete problems, proves proposed repairs in isolation, and asks for review whenever evidence or policy is insufficient.
+OSS Maintainer is an evidence-first GitHub profile curator and reliability console for one developer's explicitly authorized repositories. It makes repository health legible, proposes metadata and documentation maintenance, later investigates concrete problems, and asks for review whenever evidence or policy is insufficient.
 
 ## Information architecture
 
 Primary navigation is **Command Center**, **Repositories**, **Problems**, **Runs**, **Reports**, **Experiments**, and **Settings**. Repositories, problems, runs, evidence, and evaluations are stable resources with shareable URLs; chat is not a navigation primitive.
 
-Milestone 1 implements Command Center, Repositories, repository detail, scan reports, and GitHub settings. Empty future sections should not imply capabilities exist.
+Milestone 1 implements Command Center, Repositories, repository detail, scan reports, and GitHub settings. Milestone 2 adds persisted AI curation assessments and proposal review. Empty future sections should not imply capabilities exist.
 
 ## Primary journeys
 
 1. **Onboard:** install the GitHub App, select its authorized repositories, confirm read-only permissions, and land on an automatically scanned inventory. Repositories explicitly excluded in the console retain history and stay excluded from later syncs.
 2. **Understand health:** open a repository, read status and freshness, separate build/CI from deployment, expand a dimension to see deterministic rules and source evidence, and compare historical snapshots.
-3. **Investigate (M2+):** select a detected problem, start a bounded run, follow live structured events, inspect reproduction and evidence, pause/stop, and receive a durable report.
-4. **Review a fix (M4+):** compare before/after validation, inspect diff/risk/policy/remaining uncertainty, then approve PR creation or reject/request deeper investigation.
-5. **Improve the maintainer (M5+):** create a versioned experiment, run identical scenarios for baseline/treatment, inspect failures and confidence intervals, and adopt or reject the change.
+3. **Curate a profile (M2+):** review repository relevance, confidence, strengths, concerns, and proposed descriptions, topics, README plans, CI follow-up, or archive review. No proposal is applied in M2.
+4. **Investigate (M3+):** select a detected problem, start a bounded run, follow live structured events, inspect reproduction and evidence, pause/stop, and receive a durable report.
+5. **Review a fix (M5+):** compare before/after validation, inspect diff/risk/policy/remaining uncertainty, then approve PR creation or reject/request deeper investigation.
+6. **Improve the maintainer (M6+):** create a versioned experiment, run identical scenarios for baseline/treatment, inspect failures and confidence intervals, and adopt or reject the change.
 
 ## State semantics
 

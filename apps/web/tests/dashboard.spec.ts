@@ -93,6 +93,39 @@ const scan = {
   ],
 };
 
+const assessment = {
+  id: "33333333-3333-4333-8333-333333333333",
+  repository_id: repository.id,
+  scan_id: scan.id,
+  started_at: "2026-08-24T12:02:00Z",
+  completed_at: "2026-08-24T12:02:10Z",
+  status: "completed",
+  model: "gpt-5.4-mini",
+  prompt_version: "m2.curation.v1",
+  base_sha: scan.base_sha,
+  evidence: {},
+  error: null,
+  analysis: {
+    classification: "portfolio",
+    confidence: 88,
+    summary: "A polished portfolio project with one metadata improvement available.",
+    strengths: ["CI passes and the README is present."],
+    concerns: ["The repository has no topics."],
+    recommendations: [
+      {
+        kind: "topics",
+        priority: "medium",
+        title: "Add discoverable topics",
+        rationale: "Topics would make the project's purpose easier to scan.",
+        evidence: ["GitHub topics are empty."],
+        suggested_description: null,
+        suggested_topics: ["typescript", "widgets"],
+        readme_plan: [],
+      },
+    ],
+  },
+};
+
 test.beforeEach(async ({ page }) => {
   await page.route("http://localhost:8001/**", async (route) => {
     const url = new URL(route.request().url());
@@ -101,6 +134,7 @@ test.beforeEach(async ({ page }) => {
     if (path === "/api/v1/repositories") body = [repository];
     else if (path === `/api/v1/repositories/${repository.id}`) body = repository;
     else if (path === `/api/v1/repositories/${repository.id}/scans`) body = [scan];
+    else if (path === `/api/v1/repositories/${repository.id}/assessments`) body = [assessment];
     else if (path === "/api/v1/github/account") {
       body = { login: "maintainer", avatar_url: null, profile_url: "https://github.com/maintainer" };
     } else if (path === "/api/v1/settings/github") {
@@ -139,6 +173,8 @@ test("shows persisted health and drills into source-linked scan history", async 
   await page.getByRole("link", { name: "Report →" }).click();
   await expect(page.getByRole("heading", { name: "acme/widgets" })).toBeVisible();
   await expect(page.getByText("LATEST VS PREVIOUS")).toBeVisible();
+  await expect(page.getByText("Portfolio", { exact: true })).toBeVisible();
+  await expect(page.getByText("Add discoverable topics")).toBeVisible();
   await expect(page.getByRole("link", { name: "Inspect source evidence ↗" })).toHaveAttribute(
     "href",
     /github\.com\/acme\/widgets\/commit/,

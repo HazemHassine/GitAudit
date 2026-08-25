@@ -15,8 +15,8 @@ Build a single-developer operations console that observes explicitly authorized 
 
 1. **Modular monolith first.** One FastAPI service owns HTTP, scanning, scoring, and persistence. A separately deployable worker is deferred until scans outgrow an in-process job boundary. Modules retain explicit ports so extraction is mechanical.
 2. **PostgreSQL is the system of record.** Repository observations and derived reports are immutable snapshots. Current state is a query over the latest snapshot, not mutable truth copied into several stores.
-3. **Deterministic collection and scoring precede AI.** Milestone 1 contains no model dependency. LLM output will later create typed hypotheses and plans, never raw authority.
-4. **A durable state machine, not a conversational swarm.** A single maintainer workflow with specialized nodes will be introduced for diagnosis. Checkpoints and events make interruption and recovery explicit.
+3. **Deterministic collection and scoring precede AI.** Milestone 1 contains no model dependency. Milestone 2 feeds persisted observations and explicit deterministic pre-checks into a typed curation assessment. LLM output is a proposal, never raw authority or scoring evidence.
+4. **A bounded state graph, not a conversational swarm.** Milestone 2 introduces a small LangGraph workflow for curation. Later investigation workflows add checkpoints and events so interruption and recovery remain explicit.
 5. **GitHub App authentication is the production target.** Fine-grained installation access, short-lived tokens, explicit repository selection, and auditable permissions fit the product better than a broad personal token. A read-only token adapter may support local development.
 6. **SSE for live events.** Execution is server-to-client streaming with normal HTTP commands for pause/stop/approve; WebSockets add no current benefit.
 7. **Docker is an execution backend, not a security boundary.** Later repository execution runs in disposable, non-root containers with resource/network/mount controls. The application never mounts the Docker socket into a repository container.
@@ -32,17 +32,22 @@ flowchart LR
   API --> DB[(PostgreSQL)]
   Scan --> DB
   GH --> GitHub[GitHub API]
+  API --> Curator[LangGraph profile curator]
+  Curator --> GH
+  Curator --> DB
+  Curator --> Models[OpenAI via LangChain]
   API -. later .-> Runner[Durable job runner]
   Runner -. later .-> Agent[Maintainer state graph]
   Agent -. later .-> Sandbox[Docker sandbox adapter]
-  Agent -. later .-> Models[Model router/providers]
+  Agent -. later .-> Router[Model router/providers]
 ```
 
 - **API:** validation, authorization boundary, repository and scan resources.
 - **GitHub adapter:** typed external API boundary, pagination/rate-limit handling, and normalized observations.
 - **Scanner:** invokes collectors, preserves unavailable/unknown signals, and writes one atomic scan snapshot.
 - **Health scorer:** versioned, deterministic rules that produce contributions plus evidence references.
-- **Web:** command center, repository inventory, detail, and scan history; no chat as the primary object.
+- **Profile curator:** bounded LangGraph pre-check and strict structured assessment; proposal-only.
+- **Web:** command center, repository inventory, detail, scan history, and curation review; no chat as the primary object.
 - **Telemetry:** structured logs, trace correlation, and a deliberately small metric set.
 
 ## Milestone 1 data flow
@@ -104,9 +109,15 @@ The future `Sandbox` port exposes prepare, execute, collect-artifact, and destro
 
 Existing repository container configuration is inspected and used only after policy checks. Generated execution Dockerfiles live outside the checkout and are never proposed as source changes by default. Docker does not defend against every kernel/container escape; stronger remote microVM isolation is a future backend.
 
-## Model routing
+## Model use and future routing
 
-No model is called in Milestone 1. Later a provider-neutral router maps a versioned `TaskComplexity` feature record to fast, standard, or reasoning capability tiers. Inputs include category/severity, reproduction status, repository/context size, affected scope, dependency count, tools, failed attempts, and historical outcomes. Every decision records features, score, reasons, selected model, prices, tokens, latency, validity, retries, confidence, and escalation.
+No model is called in Milestone 1. Milestone 2 uses one server-configured OpenAI model through
+LangChain and records its name and prompt version with every curation attempt. Later a
+provider-neutral router maps a versioned `TaskComplexity` feature record to fast, standard, or
+reasoning capability tiers. Inputs include category/severity, reproduction status,
+repository/context size, affected scope, dependency count, tools, failed attempts, and historical
+outcomes. Every routing decision records features, score, reasons, selected model, prices, tokens,
+latency, validity, retries, confidence, and escalation.
 
 Escalation is bounded and triggered by explicit conditions such as invalid structured output, tool failure, or confidence below policy threshold. Per-run cost, high-tier-call, duration, and repair-attempt budgets terminate in `NEEDS_HUMAN`, never an infinite loop.
 
@@ -124,7 +135,7 @@ Escalation is bounded and triggered by explicit conditions such as invalid struc
 - `health_signals`: dimension, status (`pass/fail/unknown/unavailable`), normalized value, summary, evidence reference, observed time.
 - `score_contributions`: rule ID, dimension, points, explanation, evidence reference.
 
-Milestone 2 adds problems, evidence, and run events. Maintenance runs/checkpoints, hypotheses, workspaces, changes, validations, evaluations, PRs, and model invocations are added with the workflows that need them rather than as empty tables now.
+Milestone 2 adds `repository_assessments`: immutable attempt status, repository/scan references, model and prompt provenance, the exact evidence envelope, structured analysis, and failure details. Milestone 3 adds problems, evidence, and run events. Maintenance runs/checkpoints, hypotheses, workspaces, changes, validations, evaluations, PRs, and model invocations are added with the workflows that need them rather than as empty tables now.
 
 ## MVP boundary and tradeoffs
 

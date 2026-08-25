@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Navigation } from "../components/Navigation";
 import {
+  type AISettings,
   type Account,
   type GitHubSettings,
   type SyncStatus,
@@ -17,14 +18,16 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<GitHubSettings | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const [sync, setSync] = useState<SyncStatus | null>(null);
+  const [aiSettings, setAISettings] = useState<AISettings | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const [settingsResult, syncResult, accountResult] = await Promise.allSettled([
+    const [settingsResult, syncResult, accountResult, aiResult] = await Promise.allSettled([
       request<GitHubSettings>("/api/v1/settings/github"),
       request<SyncStatus>("/api/v1/sync"),
       request<Account>("/api/v1/github/account"),
+      request<AISettings>("/api/v1/settings/ai"),
     ]);
     if (settingsResult.status === "fulfilled") setSettings(settingsResult.value);
     if (syncResult.status === "fulfilled") setSync(syncResult.value);
@@ -34,6 +37,7 @@ export default function SettingsPage() {
     } else {
       setConnectionError(accountResult.reason instanceof Error ? accountResult.reason.message : "GitHub connection failed");
     }
+    if (aiResult.status === "fulfilled") setAISettings(aiResult.value);
   }, []);
 
   useEffect(() => {
@@ -140,6 +144,28 @@ export default function SettingsPage() {
             <button disabled={busy || sync?.running || !settings?.configured} onClick={() => void scanAll()}>
               {sync?.running ? "Scanning every repository…" : "Discover + scan everything now"}
             </button>
+          </article>
+
+          <article className="settingsCard automationCard">
+            <p className="label">AI PROFILE CURATOR / LANGGRAPH</p>
+            <h2>Evidence-backed proposals, never automatic changes</h2>
+            <p>
+              The curation graph reviews persisted scan evidence, repository metadata, topics, and
+              README content. Its structured recommendations are stored for review.
+            </p>
+            <dl>
+              <div><dt>Provider</dt><dd>{label(aiSettings?.provider ?? "loading")}</dd></div>
+              <div><dt>Configured</dt><dd>{aiSettings?.configured ? "Yes" : "No"}</dd></div>
+              <div><dt>Model</dt><dd>{aiSettings?.model ?? "—"}</dd></div>
+              <div><dt>Workflow</dt><dd>{label(aiSettings?.workflow ?? "langgraph")}</dd></div>
+              <div><dt>Prompt</dt><dd>{aiSettings?.prompt_version ?? "—"}</dd></div>
+            </dl>
+            {!aiSettings?.configured && (
+              <div className="envBlock">
+                <code>OPENAI_API_KEY=…</code>
+                <code>OPENAI_MODEL=gpt-5.4-mini</code>
+              </div>
+            )}
           </article>
         </section>
 

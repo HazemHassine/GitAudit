@@ -17,7 +17,15 @@ Each slice must be demoable, observable, tested, and honest about unavailable da
 
 **Backend:** domain models, SQLAlchemy repositories, GitHub port/adapter, scanner, scorer, REST resources, error/rate-limit behavior. **Frontend:** command-center shell, inventory, detail, score breakdown, scan history, clear unknown/unavailable states. **Tests:** scorer unit/property cases, GitHub contract fixtures, persistence integration tests, API tests, and one browser happy path. **Complete when:** a fresh setup can authorize and automatically scan every installation repository; reruns retain history; every point has a rule/evidence reference; no GitHub write permission is requested; telemetry identifies scan failures.
 
-## M2 — Reproduction engine
+## M2 — AI profile curator
+
+**Goal:** assess how each personal repository contributes to the owner's GitHub profile and propose evidence-backed metadata and documentation maintenance without changing GitHub.
+
+**User-visible outcome:** run an assessment, review a relevance classification with confidence and evidence, and inspect concrete proposals for descriptions, topics, README content, CI follow-up, or manual archive review.
+
+**Backend:** persisted assessment attempts, versioned prompts, injection-resistant evidence builder, deterministic pre-checks, a bounded LangGraph workflow, LangChain/OpenAI structured output, and read-only GitHub metadata/README collection. **Frontend:** classification, strengths/concerns, recommendation cards, suggested values, provenance, and configuration state. **Tests:** graph-node tests, provider fakes, structured-output validation, persistence recovery, and prompt-injection fixtures. **Complete when:** an authorized repository can be assessed from persisted scan evidence; every proposal is evidence-linked and historically retained; missing data remains explicit; and no GitHub mutation endpoint exists.
+
+## M3 — Reproduction engine
 
 **Goal:** reproduce a selected failed Actions job at its exact commit in an isolated workspace.
 
@@ -25,7 +33,7 @@ Each slice must be demoable, observable, tested, and honest about unavailable da
 
 **Backend:** problem/evidence/run-event records, CI log retrieval, project detection for Python/Node, Docker sandbox port, bounded command runner, SSE, cancellation, artifact retention. **Frontend:** problem and run pages, live phase timeline, expandable evidence, stop action. **Tests:** malicious fixture threat cases, resource/time limits, adapter contracts, reconnecting SSE, deterministic failed-build fixture. **Complete when:** the reference CI failure is reproduced from the recorded SHA without host execution or secret exposure and cleanup occurs on success/failure/cancel.
 
-## M3 — Evidence-first diagnosis
+## M4 — Evidence-first diagnosis
 
 **Goal:** turn reproduced failures into typed, auditable diagnoses without changing code.
 
@@ -33,7 +41,7 @@ Each slice must be demoable, observable, tested, and honest about unavailable da
 
 **Backend:** checkpointed LangGraph-style workflow, prompt/version registry, structured-output validation, provider abstraction, routing v1, budgets/escalation, injection-resistant context builder. **Frontend:** diagnosis view, model-decision event, cost/budget, deeper-investigation action. **Tests:** node tests, invalid-output/retry cases, prompt-injection fixtures, provider fakes, diagnosis benchmark. **Complete when:** benchmark diagnoses are reproducible, schema-valid, evidence-linked, budget-bounded, and baseline metrics are published.
 
-## M4 — Safe autonomous repair
+## M5 — Safe autonomous repair
 
 **Goal:** produce a validated patch and, only after user approval, a PR.
 
@@ -41,7 +49,7 @@ Each slice must be demoable, observable, tested, and honest about unavailable da
 
 **Backend:** isolated mutable worktree, constrained editing tools, validation planner, bounded repair loop, deterministic risk/autonomy policy, stale-SHA check, GitHub branch/commit/PR writes with idempotency. **Frontend:** fix review, diff/evidence/validation panes, approve/reject/retry controls. **Tests:** policy matrices, stale-base/concurrency, regression fixtures, GitHub write contracts, end-to-end repair. **Complete when:** low-risk fixtures produce regression-free patches; prohibited changes are blocked; no default-branch write/merge exists; PR creation requires approval.
 
-## M5 — Evaluation laboratory
+## M6 — Evaluation laboratory
 
 **Goal:** make maintainer changes measurable and regression-gated.
 
@@ -49,7 +57,7 @@ Each slice must be demoable, observable, tested, and honest about unavailable da
 
 **Backend:** scenario manifests, fixture lifecycle/fault injection, evaluator, repeated trials, immutable experiment results, CI comparison gate. **Frontend:** experiments list/detail, metric intervals, failure drill-down. **Tests:** evaluator self-tests, fixture integrity, metric calculations, CI smoke suite. **Complete when:** a versioned benchmark runs locally and in CI, publishes raw outcomes, and prevents agreed safety/quality regressions.
 
-## M6 — Productionization
+## M7 — Productionization
 
 **Goal:** operate scheduled scans and recoverable runs reliably.
 
@@ -57,7 +65,7 @@ Each slice must be demoable, observable, tested, and honest about unavailable da
 
 **Backend:** durable lightweight queue/worker, leases/idempotency/recovery, OpenTelemetry export, email abstraction, retention, Cloud Run deployment and CI/CD. **Frontend:** schedules, notification/budget settings, failure/retry state. **Tests:** crash recovery, duplicate delivery, provider outage/backoff, deployment smoke and migration tests. **Complete when:** staged operation survives restarts and transient outages, alerts are actionable, and dashboards expose SLOs/cost.
 
-## M7 — Advanced intelligence
+## M8 — Advanced intelligence
 
 **Goal:** improve coverage and routing using measured evidence.
 

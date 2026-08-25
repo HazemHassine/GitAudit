@@ -9,6 +9,7 @@ export type RepositoryStatus =
   | "degraded"
   | "scan_failed";
 export type ScanStatus = "running" | "completed" | "partial" | "failed";
+export type AssessmentStatus = "running" | "completed" | "failed";
 
 export type Evidence = {
   source: string;
@@ -108,6 +109,56 @@ export type GitHubSettings = {
   auto_scan_on_startup: boolean;
   auto_scan_interval_minutes: number;
   scan_stale_after_minutes: number;
+};
+
+export type AISettings = {
+  configured: boolean;
+  provider: string;
+  model: string;
+  workflow: string;
+  prompt_version: string;
+};
+
+export type CurationRecommendation = {
+  kind: "description" | "topics" | "readme" | "ci" | "archive_review";
+  priority: "low" | "medium" | "high";
+  title: string;
+  rationale: string;
+  evidence: string[];
+  suggested_description: string | null;
+  suggested_topics: string[];
+  readme_plan: string[];
+};
+
+export type CurationAnalysis = {
+  classification:
+    | "active"
+    | "portfolio"
+    | "reference"
+    | "experimental"
+    | "stale"
+    | "archive_candidate"
+    | "insufficient_evidence";
+  confidence: number;
+  summary: string;
+  strengths: string[];
+  concerns: string[];
+  recommendations: CurationRecommendation[];
+};
+
+export type CurationAssessment = {
+  id: string;
+  repository_id: string;
+  scan_id: string | null;
+  started_at: string;
+  completed_at: string | null;
+  status: AssessmentStatus;
+  model: string;
+  prompt_version: string;
+  base_sha: string | null;
+  evidence: Record<string, unknown>;
+  analysis: CurationAnalysis | null;
+  error: string | null;
 };
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {

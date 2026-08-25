@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Navigation } from "../../components/Navigation";
 import {
+  type CurationAssessment,
   type Repository,
   type Scan,
   label,
@@ -29,6 +30,7 @@ export default function RepositoryReport() {
   const router = useRouter();
   const [repository, setRepository] = useState<Repository | null>(null);
   const [history, setHistory] = useState<Scan[]>([]);
+  const [assessments, setAssessments] = useState<CurationAssessment[]>([]);
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,12 +38,14 @@ export default function RepositoryReport() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [nextRepository, nextHistory] = await Promise.all([
+      const [nextRepository, nextHistory, nextAssessments] = await Promise.all([
         request<Repository>(`/api/v1/repositories/${repositoryId}`),
         request<Scan[]>(`/api/v1/repositories/${repositoryId}/scans`),
+        request<CurationAssessment[]>(`/api/v1/repositories/${repositoryId}/assessments`),
       ]);
       setRepository(nextRepository);
       setHistory(nextHistory);
+      setAssessments(nextAssessments);
       setSelectedScanId((current) =>
         current && nextHistory.some((scan) => scan.id === current)
           ? current
@@ -86,8 +90,26 @@ export default function RepositoryReport() {
       await request(`/api/v1/repositories/${repositoryId}/scans`, { method: "POST" });
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Repository scan failed");
+      const message = reason instanceof Error ? reason.message : "Repository scan failed";
       await load();
+      setError(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function assessProfile() {
+    setBusy(true);
+    setError(null);
+    try {
+      await request<CurationAssessment>(`/api/v1/repositories/${repositoryId}/assessments`, {
+        method: "POST",
+      });
+      await load();
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Profile assessment failed";
+      await load();
+      setError(message);
     } finally {
       setBusy(false);
     }
@@ -110,6 +132,7 @@ export default function RepositoryReport() {
   }
 
   const status = repository ? repositoryDisplayStatus(repository) : "unscanned";
+  const latestAssessment = assessments[0] ?? null;
 
   return (
     <main className="shell">
@@ -130,6 +153,9 @@ export default function RepositoryReport() {
             )}
             <button disabled={busy} onClick={() => void scanNow()}>
               {busy ? "Scanning…" : "Scan now"}
+            </button>
+            <button disabled={busy} onClick={() => void assessProfile()}>
+              {busy ? "Working…" : "Assess profile"}
             </button>
             <button className="quietButton" disabled={busy} onClick={() => void stopMonitoring()}>
               Stop monitoring
@@ -172,6 +198,117 @@ export default function RepositoryReport() {
             </div>
           </section>
         )}
+
+        <section className="curationPanel">
+          <div className="curationHead">
+            <div>
+              <p className="label">MILESTONE 2 / AI PROFILE CURATOR</p>
+              <h2>Repository positioning and maintenance proposals</h2>
+            </div>
+            {latestAssessment?.analysis && (
+              <div className="curationVerdict">
+                <span>{label(latestAssessment.analysis.classification)}</span>
+                <b>{latestAssessment.analysis.confidence}% confidence</b>
+              </div>
+            )}
+          </div>
+
+          {!latestAssessment && (
+            <div className="curationEmpty">
+              <b>No AI assessment yet</b>
+              <span>
+                Review relevance, description, topics, README, and CI evidence. The curator only
+                proposes changes; it cannot modify GitHub.
+              </span>
+              <button disabled={busy} onClick={() => void assessProfile()}>
+                Assess this repository
+              </button>
+            </div>
+          )}
+
+          {latestAssessment?.status === "running" && (
+            <div className="curationEmpty" aria-live="polite">
+              <b>Assessment in progress</b>
+              <span>The LangGraph workflow is collecting evidence and preparing proposals.</span>
+            </div>
+          )}
+
+          {latestAssessment?.error && (
+            <div className="inlineError">{latestAssessment.error}</div>
+          )}
+
+          {latestAssessment?.analysis && (
+            <>
+              <p className="curationSummary">{latestAssessment.analysis.summary}</p>
+              <div className="curationSignals">
+                <div>
+                  <span>STRENGTHS</span>
+                  {latestAssessment.analysis.strengths.map((strength) => (
+                    <p key={strength}>{strength}</p>
+                  ))}
+                  {!latestAssessment.analysis.strengths.length && <p>No strengths asserted.</p>}
+                </div>
+                <div>
+                  <span>CONCERNS</span>
+                  {latestAssessment.analysis.concerns.map((concern) => (
+                    <p key={concern}>{concern}</p>
+                  ))}
+                  {!latestAssessment.analysis.concerns.length && <p>No material concerns found.</p>}
+                </div>
+              </div>
+              <div className="recommendationList">
+                <div className="sectionTitle">
+                  <span>PROPOSALS ONLY</span>
+                  <small>
+                    {latestAssessment.analysis.recommendations.length} RECOMMENDATIONS
+                  </small>
+                </div>
+                {latestAssessment.analysis.recommendations.map((recommendation, index) => (
+                  <article key={`${recommendation.kind}:${index}`}>
+                    <div className="recommendationMeta">
+                      <span>{label(recommendation.kind)}</span>
+                      <b className={recommendation.priority}>{label(recommendation.priority)}</b>
+                    </div>
+                    <h3>{recommendation.title}</h3>
+                    <p>{recommendation.rationale}</p>
+                    {recommendation.suggested_description && (
+                      <blockquote>{recommendation.suggested_description}</blockquote>
+                    )}
+                    {!!recommendation.suggested_topics.length && (
+                      <div className="topicList">
+                        {recommendation.suggested_topics.map((topic) => (
+                          <code key={topic}>{topic}</code>
+                        ))}
+                      </div>
+                    )}
+                    {!!recommendation.readme_plan.length && (
+                      <ul>
+                        {recommendation.readme_plan.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {!!recommendation.evidence.length && (
+                      <small>Evidence: {recommendation.evidence.join(" · ")}</small>
+                    )}
+                  </article>
+                ))}
+                {!latestAssessment.analysis.recommendations.length && (
+                  <div className="panelEmpty">
+                    <b>No changes proposed</b>
+                    <span>The profile evidence looks adequate.</span>
+                  </div>
+                )}
+              </div>
+              <footer className="curationProvenance">
+                <span>
+                  {latestAssessment.model} · {latestAssessment.prompt_version}
+                </span>
+                <span>{formatDate(latestAssessment.completed_at)}</span>
+              </footer>
+            </>
+          )}
+        </section>
 
         <section className="reportGrid">
           <div className="panel comparisonPanel">

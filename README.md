@@ -1,11 +1,12 @@
 # OSS Maintainer
 
-An evidence-first, read-only operations console for observing explicitly authorized GitHub
-repositories. It automatically inventories every repository visible to the configured GitHub App
-installation or fine-grained token, persists scan attempts and evidence, and makes health scoring
-auditable.
+An evidence-first AI curator for a developer's authorized GitHub repositories. It inventories the
+repositories visible to a configured GitHub App or fine-grained token, persists health evidence,
+and uses a bounded LangGraph workflow to propose improvements to profile metadata and
+documentation.
 
-Milestone 1 does not execute repository code or make GitHub changes.
+Milestone 2 does not execute repository code, fix source code, or make GitHub changes. AI output is
+stored as a reviewable proposal, never treated as observed evidence or applied automatically.
 
 ## What it does now
 
@@ -17,6 +18,9 @@ Milestone 1 does not execute repository code or make GitHub changes.
 - Shows repository permalinks, scan comparisons, raw source evidence, freshness, and rule ledgers.
 - Keeps the last persisted inventory usable during a GitHub outage.
 - Supports GitHub App installation authentication and a local fine-grained-token fallback.
+- Classifies repository positioning while preserving uncertainty.
+- Proposes missing descriptions, topics, README improvements, and CI follow-up.
+- Persists every AI assessment with its model, prompt version, commit SHA, evidence, and status.
 
 Explicitly stopping monitoring retains history and prevents later automatic inventory runs from
 re-enabling that repository. Reconnecting it makes it eligible for automatic scans again.
@@ -57,7 +61,14 @@ Requirements are Python 3.12+, Node 20.19+, and Docker.
    GITHUB_APP_SLUG=your-app-slug
    ```
 
-3. Install and run:
+3. Add the OpenAI key used by the profile-curation graph:
+
+   ```dotenv
+   OPENAI_API_KEY=sk-proj-...
+   OPENAI_MODEL=gpt-5.4-mini
+   ```
+
+4. Install and run:
 
    ```bash
    docker compose up -d db
@@ -95,3 +106,10 @@ make test-e2e   # Playwright browser happy path
 
 The API exposes `/healthz` for liveness, `/readyz` for database readiness, and `/metrics` for
 Prometheus-compatible request and scan metrics. Logs are structured JSON and carry request IDs.
+
+## Milestone 2 safety boundary
+
+Repository descriptions, topics, README text, and scan output are treated as untrusted input. The
+LangGraph workflow runs a deterministic pre-check before requesting a strict structured assessment.
+There are intentionally no API routes for approving or applying a proposal, changing metadata,
+editing a README, adding CI, or archiving a repository yet.
