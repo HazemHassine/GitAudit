@@ -16,14 +16,26 @@ from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from .config import get_settings
 from .coordinator import RepositorySyncCoordinator
+from .curation import (
+    PROMPT_VERSION,
+    AssessmentInProgressError,
+    CurationConfigurationError,
+    CurationError,
+    CurationService,
+    assessment_snapshot,
+    build_curation_agent,
+)
 from .database import (
+    RepositoryAssessmentRecord,
     RepositoryRecord,
     RepositoryScanRecord,
     build_engine,
     build_session_factory,
 )
 from .domain import (
+    AISettingsStatus,
     ConnectRepositoryRequest,
+    CurationAssessment,
     DiscoveredRepository,
     GitHubAccount,
     GitHubSettingsStatus,
@@ -51,17 +63,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     engine = build_engine(settings)
     client = httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=10.0))
     session_factory = build_session_factory(engine)
-    repository_service = RepositoryService(
-        HttpGitHubReader(settings, client), settings.scan_stale_after_minutes
-    )
+    github_reader = HttpGitHubReader(settings, client)
+    repository_service = RepositoryService(github_reader, settings.scan_stale_after_minutes)
+    curation_agent = build_curation_agent(settings) if settings.openai_configured else None
+    curation_service = CurationService(github_reader, settings.openai_model, curation_agent)
     async with session_factory() as recovery_session:
         recovered = await repository_service.recover_interrupted_scans(recovery_session)
         if recovered:
             logger.warning("interrupted_scans_recovered", count=recovered)
+        recovered_assessments = await curation_service.recover_interrupted_assessments(
+            recovery_session
+        )
+        if recovered_assessments:
+            logger.warning(
+                "interrupted_assessments_recovered", count=recovered_assessments
+            )
     coordinator = RepositorySyncCoordinator(settings, session_factory, repository_service)
     app.state.engine = engine
     app.state.session_factory = session_factory
     app.state.repository_service = repository_service
+    app.state.curation_service = curation_service
     app.state.sync_coordinator = coordinator
     coordinator.start()
     try:
@@ -72,7 +93,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await engine.dispose()
 
 
-app = FastAPI(title=settings.app_name, version="0.3.0", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="0.4.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -123,9 +144,14 @@ def sync_coordinator(request: Request) -> RepositorySyncCoordinator:
     return request.app.state.sync_coordinator
 
 
+def curation(request: Request) -> CurationService:
+    return request.app.state.curation_service
+
+
 SessionDependency = Annotated[AsyncSession, Depends(database_session)]
 ServiceDependency = Annotated[RepositoryService, Depends(service)]
 CoordinatorDependency = Annotated[RepositorySyncCoordinator, Depends(sync_coordinator)]
+CurationDependency = Annotated[CurationService, Depends(curation)]
 
 
 @app.exception_handler(GitHubError)
@@ -140,6 +166,20 @@ async def github_error_handler(_: Request, exc: GitHubError) -> JSONResponse:
 @app.exception_handler(ScanInProgressError)
 async def scan_in_progress_handler(_: Request, exc: ScanInProgressError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(CurationError)
+async def curation_error_handler(_: Request, exc: CurationError) -> JSONResponse:
+    if isinstance(exc, AssessmentInProgressError):
+        status_code = 409
+    elif isinstance(exc, CurationConfigurationError):
+        status_code = 503
+    else:
+        status_code = 502
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": str(exc), "source": "curation"},
+    )
 
 
 @app.get("/healthz", tags=["system"])
@@ -171,6 +211,19 @@ async def github_settings() -> GitHubSettingsStatus:
         auto_scan_on_startup=settings.auto_scan_on_startup,
         auto_scan_interval_minutes=settings.auto_scan_interval_minutes,
         scan_stale_after_minutes=settings.scan_stale_after_minutes,
+    )
+
+
+@app.get(
+    "/api/v1/settings/ai",
+    response_model=AISettingsStatus,
+    tags=["settings"],
+)
+async def ai_settings() -> AISettingsStatus:
+    return AISettingsStatus(
+        configured=settings.openai_configured,
+        model=settings.openai_model,
+        prompt_version=PROMPT_VERSION,
     )
 
 
@@ -318,3 +371,38 @@ async def get_scan(repository_id: UUID, scan_id: UUID, session: SessionDependenc
     if record is None:
         raise HTTPException(status_code=404, detail="Scan not found")
     return scan_snapshot(record)
+
+
+@app.post(
+    "/api/v1/repositories/{repository_id}/assessments",
+    response_model=CurationAssessment,
+    status_code=status.HTTP_201_CREATED,
+    tags=["curation"],
+)
+async def assess_repository(
+    repository_id: UUID,
+    session: SessionDependency,
+    curation_service: CurationDependency,
+) -> CurationAssessment:
+    repository = await find_repository(session, repository_id)
+    return await curation_service.assess(session, repository)
+
+
+@app.get(
+    "/api/v1/repositories/{repository_id}/assessments",
+    response_model=list[CurationAssessment],
+    tags=["curation"],
+)
+async def assessment_history(
+    repository_id: UUID, session: SessionDependency
+) -> list[CurationAssessment]:
+    await find_repository(session, repository_id)
+    records = (
+        await session.scalars(
+            select(RepositoryAssessmentRecord)
+            .where(RepositoryAssessmentRecord.repository_id == repository_id)
+            .order_by(RepositoryAssessmentRecord.started_at.desc())
+            .limit(20)
+        )
+    ).all()
+    return [assessment_snapshot(item) for item in records]

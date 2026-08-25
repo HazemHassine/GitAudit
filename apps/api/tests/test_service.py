@@ -85,6 +85,9 @@ class FakeGitHub:
     async def readme_exists(self, owner: str, name: str):
         return True
 
+    async def readme_content(self, owner: str, name: str):
+        return f"# {name}\n\nA useful project."
+
 
 @pytest.fixture
 async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:

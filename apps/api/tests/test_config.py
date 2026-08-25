@@ -21,3 +21,12 @@ def test_auto_mode_prefers_complete_github_app_over_token() -> None:
 
     assert settings.github_configured is True
     assert settings.resolved_github_auth_mode == "app"
+
+
+def test_openai_configuration_is_server_owned() -> None:
+    missing = Settings(_env_file=None, openai_api_key=None)
+    configured = Settings(_env_file=None, openai_api_key="test-key", openai_model="test-model")
+
+    assert missing.openai_configured is False
+    assert configured.openai_configured is True
+    assert configured.openai_model == "test-model"

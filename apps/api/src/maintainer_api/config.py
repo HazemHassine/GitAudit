@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     auto_scan_interval_minutes: int = 0
     scan_stale_after_minutes: int = 360
     max_concurrent_scans: int = Field(default=3, ge=1, le=10)
+    openai_api_key: SecretStr | None = Field(default=None, repr=False)
+    openai_model: str = "gpt-5.4-mini"
 
     @property
     def allowed_origins(self) -> list[str]:
@@ -56,6 +58,10 @@ class Settings(BaseSettings):
         if not self.github_app_slug:
             return None
         return f"https://github.com/apps/{self.github_app_slug}/installations/new"
+
+    @property
+    def openai_configured(self) -> bool:
+        return bool(self.openai_api_key)
 
 
 @lru_cache

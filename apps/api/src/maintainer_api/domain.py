@@ -44,6 +44,36 @@ class MonitoringState(StrEnum):
     EXCLUDED = "excluded"
 
 
+class AssessmentStatus(StrEnum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class RelevanceClassification(StrEnum):
+    ACTIVE = "active"
+    PORTFOLIO = "portfolio"
+    REFERENCE = "reference"
+    EXPERIMENTAL = "experimental"
+    STALE = "stale"
+    ARCHIVE_CANDIDATE = "archive_candidate"
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+
+
+class RecommendationKind(StrEnum):
+    DESCRIPTION = "description"
+    TOPICS = "topics"
+    README = "readme"
+    CI = "ci"
+    ARCHIVE_REVIEW = "archive_review"
+
+
+class RecommendationPriority(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
 class EvidenceRef(BaseModel):
     source: str
     summary: str
@@ -163,3 +193,46 @@ class GitHubSettingsStatus(BaseModel):
     auto_scan_on_startup: bool
     auto_scan_interval_minutes: int
     scan_stale_after_minutes: int
+
+
+class AISettingsStatus(BaseModel):
+    configured: bool
+    provider: str = "openai"
+    model: str
+    workflow: str = "langgraph"
+    prompt_version: str
+
+
+class CurationRecommendation(BaseModel):
+    kind: RecommendationKind
+    priority: RecommendationPriority
+    title: str = Field(min_length=1, max_length=120)
+    rationale: str = Field(min_length=1, max_length=600)
+    evidence: list[str] = Field(default_factory=list, max_length=5)
+    suggested_description: str | None = Field(default=None, max_length=350)
+    suggested_topics: list[str] = Field(default_factory=list, max_length=12)
+    readme_plan: list[str] = Field(default_factory=list, max_length=12)
+
+
+class CurationAnalysis(BaseModel):
+    classification: RelevanceClassification
+    confidence: int = Field(ge=0, le=100)
+    summary: str = Field(min_length=1, max_length=800)
+    strengths: list[str] = Field(default_factory=list, max_length=8)
+    concerns: list[str] = Field(default_factory=list, max_length=8)
+    recommendations: list[CurationRecommendation] = Field(default_factory=list, max_length=8)
+
+
+class CurationAssessment(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
+    repository_id: UUID
+    scan_id: UUID | None = None
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+    status: AssessmentStatus = AssessmentStatus.RUNNING
+    model: str
+    prompt_version: str
+    base_sha: str | None = None
+    evidence: dict[str, object] = Field(default_factory=dict)
+    analysis: CurationAnalysis | None = None
+    error: str | None = None

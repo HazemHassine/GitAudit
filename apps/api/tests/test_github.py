@@ -1,3 +1,5 @@
+import base64
+
 import httpx
 
 from maintainer_api.config import Settings
@@ -99,3 +101,21 @@ async def test_empty_repository_commit_response_has_typed_outcome() -> None:
             assert "does not contain a commit" in str(exc)
         else:
             raise AssertionError("Expected a typed empty-repository outcome")
+
+
+async def test_readme_content_is_decoded_for_curation_evidence() -> None:
+    settings = Settings(
+        _env_file=None,
+        github_auth_mode="token",
+        github_token="read-only-token",
+        github_api_url="https://api.github.test",
+    )
+    encoded = base64.b64encode(b"# Widgets\n\nUseful widgets.").decode()
+    transport = httpx.MockTransport(
+        lambda _: httpx.Response(200, json={"encoding": "base64", "content": encoded})
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        reader = HttpGitHubReader(settings, client)
+        content = await reader.readme_content("acme", "widgets")
+
+    assert content == "# Widgets\n\nUseful widgets."

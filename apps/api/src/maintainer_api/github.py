@@ -1,4 +1,5 @@
 import asyncio
+import base64
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
@@ -31,6 +32,7 @@ class GitHubReader(Protocol):
         self, owner: str, name: str, branch: str, head_sha: str | None = None
     ) -> list[dict[str, object]]: ...
     async def readme_exists(self, owner: str, name: str) -> bool: ...
+    async def readme_content(self, owner: str, name: str) -> str | None: ...
 
 
 class HttpGitHubReader:
@@ -243,3 +245,18 @@ class HttpGitHubReader:
             return False
         self._raise_for_status(response, "reading the README")
         return True
+
+    async def readme_content(self, owner: str, name: str) -> str | None:
+        response = await self._response(f"/repos/{owner}/{name}/readme")
+        if response.status_code == 404:
+            return None
+        self._raise_for_status(response, "reading the README")
+        payload = response.json()
+        content = payload.get("content") if isinstance(payload, dict) else None
+        encoding = payload.get("encoding") if isinstance(payload, dict) else None
+        if not isinstance(content, str) or encoding != "base64":
+            raise GitHubError("GitHub returned an invalid README response")
+        try:
+            return base64.b64decode(content, validate=False).decode("utf-8", errors="replace")
+        except ValueError as exc:
+            raise GitHubError("GitHub returned invalid README content") from exc
