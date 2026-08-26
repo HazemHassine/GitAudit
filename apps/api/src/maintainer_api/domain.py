@@ -291,3 +291,45 @@ class DashboardActivity(BaseModel):
     recent_commits: list[RecentCommit] = Field(default_factory=list)
     events: list[GitHubEvent] = Field(default_factory=list)
     fetched_at: str | None = None
+
+class ReproductionPhase(StrEnum):
+    QUEUED = "queued"
+    FETCHING_LOGS = "fetching_logs"
+    PREPARING_WORKSPACE = "preparing_workspace"
+    DETECTING_STACK = "detecting_stack"
+    EXECUTING_SANDBOX = "executing_sandbox"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class ReproductionEvent(BaseModel):
+    timestamp: str
+    phase: ReproductionPhase
+    message: str
+    level: str = "info"  # info, warning, error, stdout, stderr
+
+
+class ReproductionRun(BaseModel):
+    id: UUID
+    repository_id: UUID
+    commit_sha: str
+    workflow_run_id: int | None = None
+    job_id: int | None = None
+    status: ScanStatus  # running, completed, failed, partial
+    current_phase: ReproductionPhase
+    detected_stack: str | None = None
+    command: str | None = None
+    exit_code: int | None = None
+    events: list[ReproductionEvent] = Field(default_factory=list)
+    output_logs: str | None = None
+    started_at: datetime
+    completed_at: datetime | None = None
+    error: str | None = None
+
+
+class CreateReproductionRequest(BaseModel):
+    commit_sha: str | None = None  # defaults to latest default_branch_sha if None
+    workflow_run_id: int | None = None
+    job_id: int | None = None
+    custom_command: str | None = None

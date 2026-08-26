@@ -31,6 +31,8 @@ class GitHubReader(Protocol):
     async def workflow_runs(
         self, owner: str, name: str, branch: str, head_sha: str | None = None
     ) -> list[dict[str, object]]: ...
+    async def workflow_run_jobs(self, owner: str, name: str, run_id: int) -> list[dict[str, object]]: ...
+    async def job_logs(self, owner: str, name: str, job_id: int) -> str: ...
     async def readme_exists(self, owner: str, name: str) -> bool: ...
     async def readme_content(self, owner: str, name: str) -> str | None: ...
     async def commit_activity(self, owner: str, name: str) -> list[dict[str, object]]: ...
@@ -243,6 +245,18 @@ class HttpGitHubReader:
         data = await self._get(f"/repos/{owner}/{name}/actions/runs", params)
         runs = data.get("workflow_runs", [])
         return [item for item in runs if isinstance(item, dict)] if isinstance(runs, list) else []
+
+    async def workflow_run_jobs(self, owner: str, name: str, run_id: int) -> list[dict[str, object]]:
+        data = await self._get(f"/repos/{owner}/{name}/actions/runs/{run_id}/jobs")
+        jobs = data.get("jobs", [])
+        return [item for item in jobs if isinstance(item, dict)] if isinstance(jobs, list) else []
+
+    async def job_logs(self, owner: str, name: str, job_id: int) -> str:
+        response = await self._response(f"/repos/{owner}/{name}/actions/jobs/{job_id}/logs")
+        if response.status_code == 404:
+            return ""
+        self._raise_for_status(response, "reading job logs")
+        return response.text
 
     async def readme_exists(self, owner: str, name: str) -> bool:
         response = await self._response(f"/repos/{owner}/{name}/readme")

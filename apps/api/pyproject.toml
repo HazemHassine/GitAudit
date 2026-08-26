@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "oss-maintainer-api"
+name = "gitaudit-api"
 version = "0.1.0"
-description = "Read-only repository health API for OSS Maintainer"
+description = "Read-only repository health API for GitAudit"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.14,<2",

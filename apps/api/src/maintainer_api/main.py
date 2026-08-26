@@ -8,7 +8,7 @@ import httpx
 import structlog
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +36,7 @@ from .database import (
 from .domain import (
     AISettingsStatus,
     ConnectRepositoryRequest,
+    CreateReproductionRequest,
     CurationAssessment,
     DashboardActivity,
     DashboardStats,
@@ -44,11 +45,13 @@ from .domain import (
     GitHubSettingsStatus,
     MonitoringState,
     RepositorySummary,
+    ReproductionRun,
     ScanSnapshot,
     SyncStatus,
 )
 from .github import GitHubConfigurationError, GitHubError, HttpGitHubReader
 from .observability import HTTP_DURATION, HTTP_REQUESTS, configure_logging
+from .reproduction import ReproductionService
 from .service import (
     RepositoryService,
     ScanInProgressError,
@@ -71,6 +74,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     activity_service = ActivityService(github_reader, settings.scan_stale_after_minutes)
     curation_agent = build_curation_agent(settings) if settings.openai_configured else None
     curation_service = CurationService(github_reader, settings.openai_model, curation_agent)
+    reproduction_service = ReproductionService(github_reader)
     async with session_factory() as recovery_session:
         recovered = await repository_service.recover_interrupted_scans(recovery_session)
         if recovered:
@@ -88,6 +92,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.repository_service = repository_service
     app.state.activity_service = activity_service
     app.state.curation_service = curation_service
+    app.state.reproduction_service = reproduction_service
     app.state.sync_coordinator = coordinator
     coordinator.start()
     try:
@@ -448,3 +453,91 @@ async def repository_activity(
 ) -> dict:
     repository = await find_repository(session, repository_id)
     return await activity_service.repository_activity(session, repository)
+
+def get_reproduction_service(request: Request) -> ReproductionService:
+    return request.app.state.reproduction_service
+
+ReproductionDependency = Annotated[ReproductionService, Depends(get_reproduction_service)]
+
+
+@app.post(
+    "/api/v1/repositories/{repository_id}/reproductions",
+    response_model=ReproductionRun,
+    status_code=status.HTTP_201_CREATED,
+    tags=["reproduction"]
+)
+async def create_reproduction(
+    repository_id: UUID,
+    request_data: CreateReproductionRequest,
+    session: SessionDependency,
+    service: ReproductionDependency,
+) -> ReproductionRun:
+    stmt = select(RepositoryRecord).where(RepositoryRecord.id == repository_id)
+    result = await session.execute(stmt)
+    repository = result.scalar_one_or_none()
+    if not repository:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    
+    return await service.start_reproduction(session, repository, request_data)
+
+
+@app.get(
+    "/api/v1/repositories/{repository_id}/reproductions",
+    response_model=list[ReproductionRun],
+    tags=["reproduction"]
+)
+async def list_reproductions(
+    repository_id: UUID,
+    session: SessionDependency,
+    service: ReproductionDependency,
+) -> list[ReproductionRun]:
+    stmt = select(RepositoryRecord).where(RepositoryRecord.id == repository_id)
+    result = await session.execute(stmt)
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Repository not found")
+    return await service.list_reproductions(session, repository_id)
+
+
+@app.get(
+    "/api/v1/reproductions/{reproduction_id}",
+    response_model=ReproductionRun,
+    tags=["reproduction"]
+)
+async def get_reproduction(
+    reproduction_id: UUID,
+    session: SessionDependency,
+    service: ReproductionDependency,
+) -> ReproductionRun:
+    try:
+        return await service.get_reproduction(session, reproduction_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post(
+    "/api/v1/reproductions/{reproduction_id}/cancel",
+    response_model=ReproductionRun,
+    tags=["reproduction"]
+)
+async def cancel_reproduction(
+    reproduction_id: UUID,
+    session: SessionDependency,
+    service: ReproductionDependency,
+) -> ReproductionRun:
+    try:
+        return await service.cancel_reproduction(session, reproduction_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/v1/reproductions/{reproduction_id}/stream", tags=["reproduction"])
+async def stream_reproduction(
+    reproduction_id: UUID,
+    service: ReproductionDependency,
+):
+    try:
+        # Check if the reproduction exists? 
+        pass
+    except ValueError:
+        pass
+    return StreamingResponse(service.stream_reproduction(reproduction_id), media_type="text/event-stream")

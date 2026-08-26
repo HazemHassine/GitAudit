@@ -161,6 +161,48 @@ export type CurationAssessment = {
   error: string | null;
 };
 
+export type ReproductionPhase =
+  | "queued"
+  | "fetching_logs"
+  | "preparing_workspace"
+  | "detecting_stack"
+  | "executing_sandbox"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type ReproductionEvent = {
+  timestamp: string;
+  phase: ReproductionPhase;
+  message: string;
+  level: "info" | "warning" | "error" | "stdout" | "stderr";
+};
+
+export type ReproductionRun = {
+  id: string;
+  repository_id: string;
+  commit_sha: string;
+  workflow_run_id: number | null;
+  job_id: number | null;
+  status: ScanStatus;
+  current_phase: ReproductionPhase;
+  detected_stack: string | null;
+  command: string | null;
+  exit_code: number | null;
+  events: ReproductionEvent[];
+  output_logs: string | null;
+  started_at: string;
+  completed_at: string | null;
+  error: string | null;
+};
+
+export type CreateReproductionRequest = {
+  commit_sha?: string;
+  workflow_run_id?: number;
+  job_id?: number;
+  custom_command?: string;
+};
+
 export type ContributionDay = {
   date: string;
   count: number;
@@ -256,4 +298,8 @@ export function repositoryDisplayStatus(repository: Repository): RepositoryStatu
   const status = repository.health?.repository_status ?? "unscanned";
   if (repository.evidence_stale && status === "healthy") return "attention";
   return status;
+}
+
+export function reproductionSnapshot(run: ReproductionRun): ReproductionRun {
+  return run;
 }

@@ -9,6 +9,7 @@ import {
   type CurationAssessment,
   type Repository,
   type Scan,
+  type ReproductionRun,
   label,
   relativeTime,
   repositoryDisplayStatus,
@@ -31,6 +32,7 @@ export default function RepositoryReport() {
   const [repository, setRepository] = useState<Repository | null>(null);
   const [history, setHistory] = useState<Scan[]>([]);
   const [assessments, setAssessments] = useState<CurationAssessment[]>([]);
+  const [reproductions, setReproductions] = useState<ReproductionRun[]>([]);
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,14 +40,16 @@ export default function RepositoryReport() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [nextRepository, nextHistory, nextAssessments] = await Promise.all([
+      const [nextRepository, nextHistory, nextAssessments, nextReproductions] = await Promise.all([
         request<Repository>(`/api/v1/repositories/${repositoryId}`),
         request<Scan[]>(`/api/v1/repositories/${repositoryId}/scans`),
         request<CurationAssessment[]>(`/api/v1/repositories/${repositoryId}/assessments`),
+        request<ReproductionRun[]>(`/api/v1/repositories/${repositoryId}/reproductions`).catch(() => []),
       ]);
       setRepository(nextRepository);
       setHistory(nextHistory);
       setAssessments(nextAssessments);
+      setReproductions(nextReproductions);
       setSelectedScanId((current) =>
         current && nextHistory.some((scan) => scan.id === current)
           ? current
@@ -131,6 +135,25 @@ export default function RepositoryReport() {
     }
   }
 
+  async function reproduceFailure() {
+    setBusy(true);
+    setError(null);
+    try {
+      const run = await request<ReproductionRun>(`/api/v1/reproductions`, {
+        method: "POST",
+        body: JSON.stringify({
+          commit_sha: repository?.default_branch_sha || undefined,
+        }),
+      });
+      router.push(`/repositories/${repositoryId}/reproductions/${run.id}`);
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Reproduction failed";
+      await load();
+      setError(message);
+      setBusy(false);
+    }
+  }
+
   const status = repository ? repositoryDisplayStatus(repository) : "unscanned";
   const latestAssessment = assessments[0] ?? null;
 
@@ -156,6 +179,9 @@ export default function RepositoryReport() {
             </button>
             <button disabled={busy} onClick={() => void assessProfile()}>
               {busy ? "Working…" : "Assess profile"}
+            </button>
+            <button disabled={busy} onClick={() => void reproduceFailure()}>
+              {busy ? "Working…" : "Investigate & Reproduce"}
             </button>
             <button className="quietButton" disabled={busy} onClick={() => void stopMonitoring()}>
               Stop monitoring
@@ -310,6 +336,38 @@ export default function RepositoryReport() {
           )}
         </section>
 
+        <section className="curationPanel" style={{ marginBottom: "20px" }}>
+          <div className="curationHead">
+            <div>
+              <p className="label">MILESTONE 3 / REPRODUCTION ENGINE</p>
+              <h2>Past Reproductions</h2>
+            </div>
+          </div>
+          
+          <div className="historyList" style={{ marginTop: "16px" }}>
+            {reproductions.map((run) => (
+              <button
+                key={run.id}
+                onClick={() => router.push(`/repositories/${repositoryId}/reproductions/${run.id}`)}
+              >
+                <i className={run.status} />
+                <span>
+                  <b>{formatDate(run.started_at)}</b>
+                  <small>{run.commit_sha.slice(0, 7)}</small>
+                </span>
+                <strong>{run.detected_stack || "Unknown"}</strong>
+                <em>{run.current_phase === "completed" && run.exit_code === 0 ? "SUCCESS" : run.current_phase === "failed" || run.exit_code !== 0 ? "FAILED" : run.current_phase.toUpperCase()}</em>
+              </button>
+            ))}
+            {!reproductions.length && (
+              <div className="panelEmpty">
+                <b>No historic reproductions</b>
+                <span>Click Investigate & Reproduce to run a sandbox.</span>
+              </div>
+            )}
+          </div>
+        </section>
+
         <section className="reportGrid">
           <div className="panel comparisonPanel">
             <div className="sectionTitle">
@@ -408,6 +466,16 @@ export default function RepositoryReport() {
                   <h3>{signal.summary}</h3>
                   <p>{signal.evidence.summary}</p>
                   <small>Observed {formatDate(signal.evidence.observed_at)}</small>
+                  {signal.dimension === "ci" && signal.status === "fail" && (
+                    <button
+                      className="quietButton"
+                      style={{ marginTop: "10px", width: "100%", padding: "6px", cursor: "pointer", background: "var(--ink)", color: "white", border: "0", font: "500 8px DM Mono", textTransform: "uppercase" }}
+                      onClick={() => void reproduceFailure()}
+                      disabled={busy}
+                    >
+                      Reproduce CI Failure
+                    </button>
+                  )}
                   {signal.evidence.url && (
                     <a href={signal.evidence.url} target="_blank" rel="noreferrer">
                       Inspect source evidence ↗

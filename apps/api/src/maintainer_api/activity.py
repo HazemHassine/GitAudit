@@ -185,14 +185,25 @@ class ActivityService:
         for week_data in cal_data.get("weeks", []):
             days = []
             for day_data in week_data.get("contributionDays", []):
-                # We could try to map color to a 0-4 level, but for now we'll just set count
+                count = day_data.get("contributionCount", 0)
+                # Map count to 0-4 intensity level
+                if count == 0:
+                    level = 0
+                elif count <= 2:
+                    level = 1
+                elif count <= 5:
+                    level = 2
+                elif count <= 9:
+                    level = 3
+                else:
+                    level = 4
                 days.append(ContributionDay(
                     date=day_data.get("date", ""),
-                    count=day_data.get("contributionCount", 0),
-                    level=0 # simplified
+                    count=count,
+                    level=level,
                 ))
             calendar.weeks.append(ContributionWeek(days=days))
-            
+
         # Parse events
         events = []
         for event in (profile_record.events or [])[:50]:
@@ -216,6 +227,35 @@ class ActivityService:
                     weekly_map[w]["days"][i] += d
                     
         weekly_commits = [CommitWeek(**w) for w in sorted(weekly_map.values(), key=lambda x: x["week"])]
+
+        # Fallback: if GraphQL calendar is empty (e.g. App auth mode), generate calendar from weekly_commits
+        if not calendar.weeks and weekly_commits:
+            total_contribs = 0
+            for w in weekly_commits:
+                days = []
+                # week is unix timestamp (seconds since epoch)
+                week_dt = datetime.fromtimestamp(w.week, tz=UTC)
+                for i, count in enumerate(w.days):
+                    day_dt = week_dt + timedelta(days=i)
+                    total_contribs += count
+                    if count == 0:
+                        level = 0
+                    elif count <= 2:
+                        level = 1
+                    elif count <= 5:
+                        level = 2
+                    elif count <= 9:
+                        level = 3
+                    else:
+                        level = 4
+                    days.append(ContributionDay(
+                        date=day_dt.strftime("%Y-%m-%d"),
+                        count=count,
+                        level=level,
+                    ))
+                calendar.weeks.append(ContributionWeek(days=days))
+            calendar.total = total_contribs
+
         
         # Aggregate punch card
         punch_map = defaultdict(int)

@@ -2,7 +2,7 @@
 
 ## Product promise
 
-OSS Maintainer is an evidence-first GitHub profile curator and reliability console for one developer's explicitly authorized repositories. It makes repository health legible, proposes metadata and documentation maintenance, later investigates concrete problems, and asks for review whenever evidence or policy is insufficient.
+GitAudit is an evidence-first GitHub profile curator and reliability console for one developer's explicitly authorized repositories. It makes repository health legible, proposes metadata and documentation maintenance, later investigates concrete problems, and asks for review whenever evidence or policy is insufficient.
 
 ## Information architecture
 

@@ -2,7 +2,16 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -118,3 +127,24 @@ async def session_scope(
 ) -> AsyncIterator[AsyncSession]:
     async with factory() as session:
         yield session
+
+class ReproductionRunRecord(Base):
+    __tablename__ = "reproduction_runs"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    repository_id: Mapped[UUID] = mapped_column(ForeignKey("repositories.id"), index=True)
+    commit_sha: Mapped[str] = mapped_column(String(64))
+    workflow_run_id: Mapped[int | None] = mapped_column(BigInteger)
+    job_id: Mapped[int | None] = mapped_column(BigInteger)
+    status: Mapped[str] = mapped_column(String(32), default="running", index=True)
+    current_phase: Mapped[str] = mapped_column(String(32), default="queued")
+    detected_stack: Mapped[str | None] = mapped_column(String(64))
+    command: Mapped[str | None] = mapped_column(String(255))
+    exit_code: Mapped[int | None] = mapped_column(Integer)
+    events: Mapped[list[dict[str, object]]] = mapped_column(JSON_DOCUMENT, default=list)
+    output_logs: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error: Mapped[str | None] = mapped_column(Text)
+
+    repository: Mapped[RepositoryRecord] = relationship()

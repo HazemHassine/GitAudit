@@ -331,3 +331,41 @@ footer { display:flex;justify-content:space-between;color:#929792;font:9px DM Mo
   .statCard { border-right: 0; border-bottom: 1px solid var(--line); }
   .filterBar { flex-direction: column; align-items: stretch; }
 }
+
+/* Milestone 3: Reproduction UI */
+.reproTerminal { border: 1px solid var(--line); background: var(--ink); display: flex; flex-direction: column; overflow: hidden; margin-top: 20px; box-shadow: 6px 6px 0 #17211d10; }
+.reproTerminalHead { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a3630; padding: 12px 18px; background: #131c19; }
+.reproTerminalHead .command { color: #edf0e8; font: 500 11px DM Mono; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 15px; }
+.reproTerminalHead .command::before { content: "$ "; color: var(--mint); }
+.reproTerminalHead .controls { display: flex; gap: 10px; align-items: center; }
+.reproTerminalBody { flex: 1; padding: 16px 18px; overflow-y: auto; max-height: 550px; min-height: 250px; font: 400 11px/1.6 DM Mono; color: #dce5dd; scroll-behavior: smooth; }
+.reproTerminalBody p { margin: 0; word-wrap: break-word; white-space: pre-wrap; }
+.reproTerminalBody .level-info { color: #7f9188; }
+.reproTerminalBody .level-warning { color: #d4b96e; }
+.reproTerminalBody .level-error { color: #ef6767; }
+.reproTerminalBody .level-stdout { color: #dce5dd; }
+.reproTerminalBody .level-stderr { color: #ff996a; }
+
+.phaseTimeline { display: flex; gap: 0; border: 1px solid var(--line); background: var(--panel); margin-top: 24px; overflow-x: auto; scrollbar-width: none; }
+.phaseStep { flex: 1; min-width: 140px; padding: 16px 12px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--line); position: relative; opacity: 0.5; transition: opacity 0.3s; }
+.phaseStep:last-child { border-right: 0; }
+.phaseStep.active, .phaseStep.completed, .phaseStep.failed { opacity: 1; }
+.phaseStep .stepIndicator { display: flex; align-items: center; gap: 8px; }
+.phaseStep .circle { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--muted); display: grid; place-items: center; background: var(--panel); position: relative; z-index: 2; }
+.phaseStep.active .circle { border-color: var(--mint); background: var(--mint); animation: pulse 2s infinite; }
+.phaseStep.completed .circle { border-color: #28704c; background: #28704c; }
+.phaseStep.failed .circle { border-color: var(--orange); background: var(--orange); }
+.phaseStep.completed .circle::after { content: ""; display: block; width: 4px; height: 6px; border: solid white; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); margin-bottom: 2px; }
+.phaseStep b { font: 500 9px DM Mono; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); }
+.phaseStep small { font: 400 9px DM Mono; color: var(--muted); }
+
+.stackBadge { display: inline-block; border: 1px solid #4a5c54; background: #1f2b26; color: #82f3bd; padding: 4px 8px; font: 500 9px DM Mono; text-transform: uppercase; }
+.exitCodeBadge { display: inline-block; padding: 4px 8px; font: 500 9px DM Mono; text-transform: uppercase; border: 1px solid #4a5c54; background: #1f2b26; }
+.exitCodeBadge.success { color: #82f3bd; border-color: #28704c; }
+.exitCodeBadge.failure { color: #ff996a; border-color: #a83232; }
+
+@media (max-width: 900px) {
+  .phaseTimeline { flex-direction: column; }
+  .phaseStep { border-right: 0; border-bottom: 1px solid var(--line); flex-direction: row; align-items: center; justify-content: flex-start; }
+  .phaseStep:last-child { border-bottom: 0; }
+}

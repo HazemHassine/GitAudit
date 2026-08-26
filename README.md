@@ -1,4 +1,4 @@
-# OSS Maintainer
+# GitAudit
 
 An evidence-first AI curator for a developer's authorized GitHub repositories. It inventories the
 repositories visible to a configured GitHub App or fine-grained token, persists health evidence,
