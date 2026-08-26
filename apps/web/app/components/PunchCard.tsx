@@ -2,29 +2,35 @@
 
 import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import type { PunchCardEntry } from "../lib/api";
+import type { TooltipProps } from "recharts";
+
+const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const formatHour = (hour: number) => {
+  if (hour === 0) return "12a";
+  if (hour < 12) return `${hour}a`;
+  if (hour === 12) return "12p";
+  return `${hour - 12}p`;
+};
+
+interface CustomTooltipProps extends TooltipProps<number, number> {
+  active?: boolean;
+  payload?: Array<{ payload: PunchCardEntry }>;
+}
+
+const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div style={{ background: "var(--ink)", color: "white", padding: "8px 12px", font: "10px DM Mono", textTransform: "uppercase" }}>
+        {days[data.day]} {formatHour(data.hour)}: {data.commits} commits
+      </div>
+    );
+  }
+  return null;
+};
 
 export function PunchCard({ data }: { data: PunchCardEntry[] }) {
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  
-  const formatHour = (hour: number) => {
-    if (hour === 0) return "12a";
-    if (hour < 12) return `${hour}a`;
-    if (hour === 12) return "12p";
-    return `${hour - 12}p`;
-  };
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div style={{ background: "var(--ink)", color: "white", padding: "8px 12px", font: "10px DM Mono", textTransform: "uppercase" }}>
-          {days[data.day]} {formatHour(data.hour)}: {data.commits} commits
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="chartPanel">
       <div className="sectionTitle" style={{ marginBottom: "16px" }}>
