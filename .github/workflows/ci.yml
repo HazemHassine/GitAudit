@@ -47,6 +47,8 @@ jobs:
         run: make test
       - name: Production web build
         run: make build
+      - name: Verify Docker build
+        run: docker compose build
       - name: Install browser
         run: npx --prefix apps/web playwright install --with-deps chromium
       - name: Browser happy path

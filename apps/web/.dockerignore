@@ -1,0 +1,7 @@
+node_modules/
+.next/
+test-results/
+.git/
+.gitignore
+.env*.local
+.env

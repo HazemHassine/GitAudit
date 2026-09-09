@@ -68,20 +68,25 @@ Requirements are Python 3.12+, Node 20.19+, and Docker.
    OPENAI_MODEL=gpt-5.4-mini
    ```
 
-4. Install and run:
+4. Run the full application with Docker:
 
    ```bash
-   docker compose up -d db
-   make install
-   make dev
+   docker compose up --build -d
    ```
 
-`make dev` applies database migrations and runs the API and web app together. The web UI is at
-`http://localhost:3000`; the API and OpenAPI documentation are at `http://localhost:8001` and
-`http://localhost:8001/docs`.
+   To view logs:
+   ```bash
+   docker compose logs -f
+   ```
 
-PostgreSQL is published on host port `5433` by default. Override it with
-`POSTGRES_HOST_PORT` and keep `DATABASE_URL` aligned when running the API on the host.
+   To stop all services:
+   ```bash
+   docker compose down
+   ```
+
+The web UI is at `http://localhost:3000`; the API and OpenAPI documentation are at `http://localhost:8001` and `http://localhost:8001/docs`.
+
+*(Optional local development on the host without Docker: `make install && make dev`)*
 
 ## Automatic inventory
 
