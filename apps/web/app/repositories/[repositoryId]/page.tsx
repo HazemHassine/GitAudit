@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Navigation } from "../../components/Navigation";
+import CoverageCard from "../../components/CoverageCard";
+import CiPipelinesAuditCard from "../../components/CiPipelinesAuditCard";
 import {
   type CurationAssessment,
   type Repository,
@@ -366,6 +368,12 @@ export default function RepositoryReport() {
               </div>
             )}
           </div>
+        </section>
+
+        {/* Audit Sentinels & AI Diagnostics (Issues #2 - #10) */}
+        <section className="sentinelsSection" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <CoverageCard repositoryId={repositoryId} />
+          <CiPipelinesAuditCard repositoryId={repositoryId} />
         </section>
 
         <section className="reportGrid">

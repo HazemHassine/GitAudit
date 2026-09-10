@@ -41,6 +41,8 @@ jobs:
           cache-dependency-path: apps/web/package-lock.json
       - name: Install
         run: make install
+      - name: Lint CI workflows
+        run: make lint-ci
       - name: Verify migration
         run: make db-upgrade
       - name: Unit, integration, lint, and type checks
