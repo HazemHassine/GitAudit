@@ -4,30 +4,28 @@ This document provides a comprehensive tracking register, technical architectura
 
 ---
 
-## 📌 Active Work Register
+## 📌 Worker Registry
 
-| Property | Value |
-| :--- | :--- |
-| **Current Active Branch** | `audit/issue-4-ci-pipelines` |
-| **Active Issue** | **[Issue #4: Audit: CI Pipelines](https://github.com/HazemHassine/GitAudit/issues/4)** |
-| **Active Agent** | Antigravity Pairing Assistant |
-| **Status** | In Progress |
+| Worker Name | Assigned Issue | Active Branch | Status | Assigned / Updated |
+| :--- | :--- | :--- | :--- | :--- |
+| **PipelineSentinel** | [Issue #4: Audit: CI Pipelines](https://github.com/HazemHassine/GitAudit/issues/4) | `audit/issue-4-ci-pipelines` | Implemented (Ready for Review) | 2026-09-10 02:08 |
+| **CoverageSentinel** | [Issue #3: Audit: Test Coverage & Quality](https://github.com/HazemHassine/GitAudit/issues/3) | `audit/issue-3-test-coverage` | In Progress | 2026-09-10 02:10 |
 
 ---
 
 ## 🗺️ Issues Summary Matrix
 
-| Issue ID | Domain / Title | Category | Deterministic Scope | Jules API Scope | Current Status |
-| :---: | :--- | :--- | :--- | :--- | :---: |
-| **#4** | [Audit: CI Pipelines](https://github.com/HazemHassine/GitAudit/issues/4) | Audit | CI YAML linting via `actionlint`, Makefile integration | CI bottleneck, flakiness & parallelization analysis | **IN PROGRESS** |
-| **#2** | [Audit: Build System](https://github.com/HazemHassine/GitAudit/issues/2) | Audit | Strict compiler flags, fail on warnings, bundle size limits | Build caching optimizations & multi-stage Dockerfile review | Open |
-| **#3** | [Audit: Test Coverage & Quality](https://github.com/HazemHassine/GitAudit/issues/3) | Audit | Minimum coverage threshold enforcement (e.g. 80%) in CI | `AUTO_CREATE_PR` session to generate unit/integration tests | Open |
-| **#5** | [Audit: Dependencies](https://github.com/HazemHassine/GitAudit/issues/5) | Audit | Dependabot/Renovate config for automated version updates & CVE alerts | Bloat identification, unused dependency removal, framework upgrades | Open |
-| **#6** | [Audit: Security](https://github.com/HazemHassine/GitAudit/issues/6) | Audit | CodeQL/SAST scanning, dependency vulnerability alerts, secret scanning | Complex logic audit for auth flaws, race conditions, architecture | Open |
-| **#7** | [Audit: Deployment Configuration](https://github.com/HazemHassine/GitAudit/issues/7) | Audit | Lint IaC manifests (`tflint`, `checkov`, `hadolint`) | Review deployment scripts for least-privilege IAM and HA tweaks | Open |
-| **#8** | [Audit: Documentation](https://github.com/HazemHassine/GitAudit/issues/8) | Audit | Automated broken link checker, docstring enforcement via linters | Autogenerate OpenAPI specs, architectural overviews, usage examples | Open |
-| **#9** | [Audit: Maintenance & Refactoring](https://github.com/HazemHassine/GitAudit/issues/9) | Audit | Strict code formatting (Black/Prettier) & cyclomatic complexity limits | Technical debt detection, modularization suggestions, refactoring PRs | Open |
-| **#10** | [Feature: Active Health UI](https://github.com/HazemHassine/GitAudit/issues/10) | Feature | Embed dynamic CI/CD, coverage, and security badges in header/README | Lightweight non-blocking health dashboard component via GitHub API | Open |
+| Issue ID | Domain / Title | Category | Deterministic Scope | Jules API Scope | UI & Jules Activity Scope | Current Status |
+| :---: | :--- | :--- | :--- | :--- | :--- | :---: |
+| **#4** | [Audit: CI Pipelines](https://github.com/HazemHassine/GitAudit/issues/4) | Audit | CI YAML linting via `actionlint`, Makefile integration | CI bottleneck, flakiness & parallelization analysis | CI health card, live lint status, Jules bottleneck/PR drawer | Implemented (Review) |
+| **#2** | [Audit: Build System](https://github.com/HazemHassine/GitAudit/issues/2) | Audit | Strict compiler flags, fail on warnings, bundle size limits | Build caching optimizations & multi-stage Dockerfile review | Build card, bundle size budget meter, Jules cache suggestions | Open |
+| **#3** | [Audit: Test Coverage & Quality](https://github.com/HazemHassine/GitAudit/issues/3) | Audit | Minimum coverage threshold enforcement (e.g. 80%) in CI | `AUTO_CREATE_PR` session to generate unit/integration tests | Test & coverage card, live test run state, Jules test PR stream | **IN PROGRESS** (`CoverageSentinel`) |
+| **#5** | [Audit: Dependencies](https://github.com/HazemHassine/GitAudit/issues/5) | Audit | Dependabot/Renovate config for automated version updates & CVE alerts | Bloat identification, unused dependency removal, framework upgrades | Deps card, active CVE scanner indicator, Jules bloat/upgrade feed | Open |
+| **#6** | [Audit: Security](https://github.com/HazemHassine/GitAudit/issues/6) | Audit | CodeQL/SAST scanning, dependency vulnerability alerts, secret scanning | Complex logic audit for auth flaws, race conditions, architecture | Security card, SAST scan progress, Jules vulnerability findings | Open |
+| **#7** | [Audit: Deployment Configuration](https://github.com/HazemHassine/GitAudit/issues/7) | Audit | Lint IaC manifests (`tflint`, `checkov`, `hadolint`) | Review deployment scripts for least-privilege IAM and HA tweaks | Deployment card, IaC linting state, Jules IAM/HA tweaks | Open |
+| **#8** | [Audit: Documentation](https://github.com/HazemHassine/GitAudit/issues/8) | Audit | Automated broken link checker, docstring enforcement via linters | Autogenerate OpenAPI specs, architectural overviews, usage examples | Docs card, docstring coverage meter, Jules OpenAPI preview | Open |
+| **#9** | [Audit: Maintenance & Refactoring](https://github.com/HazemHassine/GitAudit/issues/9) | Audit | Strict code formatting (Black/Prettier) & cyclomatic complexity limits | Technical debt detection, modularization suggestions, refactoring PRs | Refactoring card, complexity heatmap, Jules modularization feed | Open |
+| **#10** | [Feature: Active Health UI](https://github.com/HazemHassine/GitAudit/issues/10) | Feature | Embed dynamic CI/CD, coverage, and security badges in header/README | Central hub hosting all audit cards & global Jules activity stream | Modular slot dashboard with live progress & Jules agent feeds | Open |
 
 ---
 
@@ -120,6 +118,9 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
    - Created `.github/workflows/jules-ci-analysis.yml` using `google-labs-code/jules-invoke@v1` triggered on CI failure or manual `workflow_dispatch`.
    - Created standalone executable CLI script `scripts/jules_ci_analysis.py` with `--dry-run`, `--focus`, `--include-ci-log`, and auto-loading of `.env`.
    - Dispatched and verified live test session `sessions/9916342744409535567` on `HazemHassine/GitAudit` via the Jules API (`https://jules.googleapis.com/v1alpha`).
+3. **UI Integration & Jules Activity Display:**
+   - Embed a CI Pipelines status card/drawer in the UI dashboard displaying current workflow health, real-time Actionlint validation state, and active workflow run progress.
+   - Surface live Jules CI analysis insights (bottlenecks identified, flakiness metrics, and suggested parallelization PR links).
 
 #### Files Impacted
 - `apps/api/pyproject.toml` (added `actionlint-py`)
@@ -145,17 +146,20 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
      - Ensure multi-stage builds in `apps/api/Dockerfile` and `apps/web/Dockerfile` leverage build caches effectively (e.g. `--mount=type=cache,target=/root/.cache/pip`).
 2. **Jules API:**
    - Prompt Jules to review Dockerfile caching layers and build dependencies to optimize build time and reduce image sizes.
+3. **UI Integration & Jules Activity Display:**
+   - Embed a Build Audit card in the central dashboard reflecting real-time check progress, compiler/bundle limit statuses, and displaying live Jules caching & Dockerfile recommendations with direct PR links.
 
 #### Agent Implementation Guidance
 - Check `apps/web/package.json` scripts: `npm run build` and `npm run typecheck`.
 - Check `apps/api/pyproject.toml` hatchling configuration.
 - Check `apps/api/Dockerfile` and `apps/web/Dockerfile`.
 - Jules prompt should inspect layers and advise on layer order (copying lockfiles first before application code).
+- UI: Implement `BuildAuditCard` component in `apps/web/app/components/` that slots into the main health dashboard grid.
 
 ---
 
-### Issue #3: Audit: Test Coverage & Quality
-**Status:** Open
+### Issue #3: Audit: Test Coverage & Quality (ACTIVE BRANCH WORK)
+**Status:** In Progress (Branch: `audit/issue-3-test-coverage`, Worker: `CoverageSentinel`)
 
 #### Objectives
 1. **Deterministic:**
@@ -164,11 +168,14 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
    - Configure coverage reporting in CI (terminal output and XML/HTML report).
 2. **Jules API:**
    - Trigger a Jules session with `automationMode: "AUTO_CREATE_PR"` to inspect untested branches in `apps/api/src/maintainer_api/` and generate test fixtures and assertions in `apps/api/tests/`.
+3. **UI Integration & Jules Activity Display:**
+   - Embed a Test & Coverage card reflecting live test execution progress, current coverage meter vs threshold, and streaming Jules test-generation activity (plan status, untested edge cases identified, generated test PRs).
 
 #### Agent Implementation Guidance
 - Currently, `apps/api/pyproject.toml` does not have `pytest-cov`. Add `pytest-cov>=5.0` to `[project.optional-dependencies] dev`.
 - Inspect existing tests in `apps/api/tests/` (`test_api.py`, `test_service.py`, `test_curation.py`).
 - Jules API prompt should emphasize: "Examine untested edge cases in maintainer_api/curation.py and maintainer_api/github.py. Add pytest unit tests without mocking internal logic unnecessarily."
+- UI: Implement `CoverageAuditCard` component in `apps/web/app/components/` that renders a dynamic coverage gauge and links to Jules-generated PRs.
 
 ---
 
@@ -184,11 +191,14 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
    - Schedule weekly updates and set pull-request limits.
 2. **Jules API:**
    - Create a Jules audit workflow to detect unused dependencies (e.g. comparing installed packages against imports) and identify framework upgrade opportunities.
+3. **UI Integration & Jules Activity Display:**
+   - Embed a Dependencies Audit card reflecting live audit progress, vulnerability alerts, and showing Jules dependency bloat analysis, unused package removals, and upgrade suggestions.
 
 #### Agent Implementation Guidance
 - Create `.github/dependabot.yml` with package ecosystems: `pip`, `npm`, `github-actions`.
 - Run `npm audit` in `apps/web` and `pip audit` in `apps/api`.
 - Jules prompt should look for dependency bloat and suggest lean alternatives.
+- UI: Implement `DependenciesAuditCard` component displaying CVE badges and Jules upgrade PR recommendations.
 
 ---
 
@@ -202,11 +212,14 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
    - Run dependency vulnerability scanning in CI.
 2. **Jules API:**
    - Audit complex logic (e.g., token handling in `maintainer_api/github.py`, prompt-injection boundary in `maintainer_api/curation.py`, command isolation in `maintainer_api/reproduction.py`) for authorization flaws and race conditions.
+3. **UI Integration & Jules Activity Display:**
+   - Embed a Security Audit card showing active security scan status, alert counters, and surfacing Jules deep-audit findings (authorization flaws, concurrency risks, remediation suggestions).
 
 #### Agent Implementation Guidance
 - Inspect `maintainer_api/reproduction.py` and verify Docker command sanitization.
 - Inspect `maintainer_api/curation.py` for LLM prompt injection safeguards.
 - Add `.github/workflows/codeql.yml` using GitHub's `github/codeql-action`.
+- UI: Implement `SecurityAuditCard` with an active scanner heartbeat and Jules vulnerability report pane.
 
 ---
 
@@ -220,11 +233,14 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
    - Enforce environment variable validation and fail-fast configurations.
 2. **Jules API:**
    - Review deployment scripts and Docker configurations for least-privilege security policies, graceful termination signals (`SIGTERM`), and horizontal auto-scaling recommendations.
+3. **UI Integration & Jules Activity Display:**
+   - Embed a Deployment Audit card showing IaC manifest validation state, real-time check indicator, and displaying Jules recommendations for least-privilege IAM and high-availability configuration.
 
 #### Agent Implementation Guidance
 - Check `docker-compose.yml` and both Dockerfiles.
 - Ensure ports and volume mounts are properly isolated.
 - Provide clear cloud-run or Kubernetes deployment manifests if planned for Milestone 7.
+- UI: Implement `DeploymentAuditCard` showing container configuration health and Jules IAM optimization tips.
 
 ---
 
@@ -238,11 +254,14 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
 2. **Jules API:**
    - Autogenerate and synchronize OpenAPI specification schemas (`openapi.json`).
    - Generate architectural overviews and comprehensive API usage examples.
+3. **UI Integration & Jules Activity Display:**
+   - Embed a Documentation Audit card displaying docstring coverage metrics, broken link check progress, and Jules autogenerated OpenAPI/architecture documentation previews.
 
 #### Agent Implementation Guidance
 - Configure `ruff` lint rule selections in `apps/api/pyproject.toml`: enable `D` (pydocstyle) or specific subsets.
 - Write a script to dump OpenAPI schema directly from FastAPI:
   `python -c "import json; from maintainer_api.main import app; print(json.dumps(app.openapi()))" > docs/openapi.json`.
+- UI: Implement `DocumentationAuditCard` rendering doc completeness progress and a preview modal for Jules-generated API specs.
 
 ---
 
@@ -257,10 +276,13 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
    - Set cyclomatic complexity limits via `ruff` (`mccabe` / `C901` max-complexity = 10).
 2. **Jules API:**
    - Identify technical debt, suggest modularization in `apps/api/src/maintainer_api/service.py` (which is currently >22KB and 500+ lines), and open refactoring PRs.
+3. **UI Integration & Jules Activity Display:**
+   - Embed a Maintenance & Refactoring card showing code style status, complexity hotspots, and displaying Jules refactoring recommendations, modularization plans, and PR links.
 
 #### Agent Implementation Guidance
 - `maintainer_api/service.py` contains coordinator logic, scoring logic, and database transactions.
 - Refactor candidates: decompose into distinct service modules (e.g., `ScanCoordinatorService`, `RepositoryCatalogService`).
+- UI: Implement `RefactoringAuditCard` rendering complexity warnings and an active feed of Jules refactoring PRs.
 
 ---
 
@@ -270,10 +292,12 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
 #### Objectives
 1. **Deterministic:**
    - Add dynamic CI/CD, coverage, and security badges to the project `README.md` and the UI header in `apps/web`.
-2. **Task / Feature Implementation:**
-   - Create a lightweight, non-blocking React component (`HealthDashboard.tsx`) in `apps/web/app/components/`.
-   - Query GitHub API for repository workflow run statuses, commit statuses, and alert counts.
-   - Use client-side caching (SWR/React Query pattern) or Next.js route handlers to prevent client-side bloat and rate-limit exhaustion.
+2. **Task / Modular Architecture:**
+   - Create the central command-center layout in `apps/web/app/components/HealthDashboard.tsx` with a responsive modular grid providing dedicated slots for all audit cards (Build, Tests, CI, Deps, Security, Deployment, Docs, Refactoring).
+   - Fetch audit statuses asynchronously via the GitHub API and backend endpoints to avoid client-side blocking.
+3. **Live Progress & Jules Activity Feed:**
+   - Include visual spinners/pulsing indicators when an audit check is actively running.
+   - Embed a global **Jules Agent Activity Feed** that streams ongoing Jules sessions, current steps/activities, and generated PRs across all audit areas.
 
 #### Agent Implementation Guidance
 - Review `apps/web/app/page.tsx` and `apps/web/app/components/`.
