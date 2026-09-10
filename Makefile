@@ -1,9 +1,10 @@
-.PHONY: install dev api api-no-migrate web db-upgrade test test-e2e build
+.PHONY: install dev api api-no-migrate web db-upgrade test test-e2e build lint-ci
 
 PYTHON ?= python3
 VENV ?= .venv
 VENV_PYTHON := $(VENV)/bin/python
 VENV_UVICORN := $(VENV)/bin/uvicorn
+VENV_ACTIONLINT := $(VENV)/bin/actionlint
 API_PORT ?= 8001
 WEB_PORT ?= 3000
 
@@ -32,9 +33,13 @@ web:
 db-upgrade:
 	$(VENV_PYTHON) -m alembic -c apps/api/alembic.ini upgrade head
 
+lint-ci:
+	$(VENV_ACTIONLINT)
+
 test:
 	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 $(VENV_PYTHON) -m pytest -p pytest_asyncio.plugin apps/api/tests
 	$(VENV_PYTHON) -m ruff check apps/api/src apps/api/tests
+	$(VENV_ACTIONLINT)
 	npm --prefix apps/web run lint
 	npm --prefix apps/web run typecheck
 

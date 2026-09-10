@@ -1,0 +1,68 @@
+name: Jules CI Analysis
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      focus:
+        description: "Focus area for CI analysis (e.g., bottlenecks, flakiness, parallelization)"
+        required: false
+        default: "bottlenecks, flakiness, parallelization"
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  analyze-ci:
+    name: Analyze CI with Jules
+    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Jules API Key
+        id: check-key
+        env:
+          JULES_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          if [ -z "$JULES_KEY" ]; then
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            echo "::notice ::JULES_API_KEY secret is not set. Skipping Jules invocation."
+          else
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Invoke Jules Agent
+        if: steps.check-key.outputs.has_key == 'true'
+        uses: google-labs-code/jules-invoke@v1
+        with:
+          prompt: |
+            You are an autonomous CI optimization and reliability engineer for GitAudit.
+
+            Our GitHub Actions CI pipeline (.github/workflows/ci.yml) has completed or failed.
+            Focus area: ${{ github.event.inputs.focus || 'bottlenecks, flakiness, parallelization' }}
+
+            Analyze the repository CI setup and propose actionable improvements:
+            1. Bottlenecks:
+               - Inspect .github/workflows/ci.yml and Makefile.
+               - Detect slow sequential steps (e.g., separate pip/npm caches, Playwright browser installs, Docker builds).
+            2. Flakiness & Reliability:
+               - Inspect service container healthcheck timings (e.g., PostgreSQL readiness).
+               - Check test run timeouts and async database readiness.
+            3. Parallelization:
+               - Split the monolithic job into parallel jobs:
+                 * Backend lint & test (pytest, ruff, alembic migration, actionlint)
+                 * Frontend lint & build (eslint, typecheck, next build)
+                 * End-to-end suite (playwright)
+                 * Container verification (docker compose build)
+            4. Pull Request:
+               - If optimizations are identified, apply the changes to .github/workflows/ci.yml and ensure backwards-compatibility.
+          jules_api_key: ${{ secrets.JULES_API_KEY }}
+          starting_branch: main
+          include_commit_log: true
