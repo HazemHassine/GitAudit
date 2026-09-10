@@ -1,7 +1,8 @@
-import pytest
-from httpx import ASGITransport, AsyncClient
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
+
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 from maintainer_api.ci_audit import CiAuditService
 from maintainer_api.main import app, database_session

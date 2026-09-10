@@ -1,0 +1,54 @@
+name: Jules Automated Test Generation
+
+on:
+  workflow_dispatch:
+    inputs:
+      focus_module:
+        description: "Specific module to focus test generation on (e.g. curation, reproduction, github)"
+        required: false
+        default: ""
+      target_coverage:
+        description: "Minimum target coverage threshold (e.g. 80)"
+        required: false
+        default: "80"
+  schedule:
+    # Weekly on Saturday at 03:00 UTC
+    - cron: "0 3 * * 6"
+
+permissions:
+  contents: read
+
+jobs:
+  jules_test_generation:
+    name: Generate Unit & Integration Tests via Jules
+    runs-on: ubuntu-latest
+    if: github.repository == 'HazemHassine/GitAudit'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Run Test Generation Session via Jules
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: |
+          if [ -n "$JULES_API_KEY" ]; then
+            python3 scripts/jules_test_coverage.py \
+              --threshold "${{ github.event.inputs.target_coverage || '80' }}" \
+              --focus "${{ github.event.inputs.focus_module || '' }}" \
+              --live
+          else
+            echo "JULES_API_KEY secret not present. Running in dry-run verification mode."
+            python3 scripts/jules_test_coverage.py \
+              --threshold "${{ github.event.inputs.target_coverage || '80' }}" \
+              --focus "${{ github.event.inputs.focus_module || '' }}" \
+              --dry-run
+          fi

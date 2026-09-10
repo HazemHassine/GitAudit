@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
@@ -131,3 +132,156 @@ async def test_langgraph_assessment_is_persisted_as_a_proposal(
     assert persisted.prompt_version == "m2.curation.v1"
     assert persisted.evidence["repository"]["topics"] == []
     assert len(model.calls) == 1
+
+
+def test_build_curation_agent_unconfigured() -> None:
+    from maintainer_api.config import Settings
+    from maintainer_api.curation import CurationConfigurationError, build_curation_agent
+
+    settings = Settings(openai_api_key=None)
+    with pytest.raises(CurationConfigurationError, match="OpenAI is not configured"):
+        build_curation_agent(settings)
+
+
+def test_assessment_snapshot() -> None:
+    from datetime import UTC, datetime
+    from uuid import uuid4
+
+    from maintainer_api.curation import assessment_snapshot
+
+    record = RepositoryAssessmentRecord(
+        id=uuid4(),
+        repository_id=uuid4(),
+        scan_id=uuid4(),
+        started_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
+        status="completed",
+        model="gpt-4o",
+        prompt_version="v1",
+        evidence={},
+        analysis=None,
+    )
+    snapshot = assessment_snapshot(record)
+    assert snapshot.id == record.id
+    assert snapshot.status == AssessmentStatus.COMPLETED
+
+
+async def test_recover_interrupted_assessments(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    from datetime import UTC, datetime
+    from uuid import uuid4
+
+    from maintainer_api.database import RepositoryRecord
+    from maintainer_api.domain import MonitoringState
+
+    github = FakeGitHub()
+    curation = CurationService(github, "gpt-4o-mini", None)
+    async with session_factory() as session:
+        # None running
+        assert await curation.recover_interrupted_assessments(session) == 0
+
+        repo = RepositoryRecord(
+            id=uuid4(),
+            github_id=888,
+            owner="org",
+            name="proj",
+            default_branch="main",
+            primary_language="Python",
+            private=False,
+            html_url="https://github.com/org/proj",
+            stars=10,
+            monitoring_state=MonitoringState.ACTIVE.value,
+        )
+        record = RepositoryAssessmentRecord(
+            id=uuid4(),
+            repository_id=repo.id,
+            scan_id=None,
+            started_at=datetime.now(UTC),
+            completed_at=None,
+            status=AssessmentStatus.RUNNING.value,
+            model="gpt-4o",
+            prompt_version="v1",
+            evidence={},
+            analysis=None,
+        )
+        session.add_all([repo, record])
+        await session.commit()
+
+        recovered = await curation.recover_interrupted_assessments(session)
+        assert recovered == 1
+
+        updated = await session.get(RepositoryAssessmentRecord, record.id)
+        assert updated is not None
+        assert updated.status == AssessmentStatus.FAILED.value
+        assert updated.error == "Assessment was interrupted before completion"
+
+
+async def test_collect_evidence_branches() -> None:
+    from maintainer_api.database import RepositoryRecord, RepositoryScanRecord
+    from maintainer_api.github import GitHubError
+
+    class FailingGitHub(FakeGitHub):
+        async def readme_content(self, owner: str, name: str) -> str | None:
+            raise GitHubError("GitHub API down")
+
+    github = FailingGitHub()
+    curation = CurationService(github, "gpt-4o-mini", None)
+
+    repo = RepositoryRecord(
+        id=uuid4(),
+        github_id=777,
+        owner="acme",
+        name="tools",
+        default_branch="main",
+        primary_language="Python",
+        private=False,
+        html_url="https://github.com/acme/tools",
+        stars=10,
+    )
+    scan = RepositoryScanRecord(
+        id=uuid4(),
+        repository_id=repo.id,
+        status="completed",
+        report={"dimensions": [{"dimension": "ci", "status": "passed"}]},
+    )
+
+    evidence = await curation._collect_evidence(repo, scan)
+    assert evidence["readme"]["status"] == "unavailable"
+    assert evidence["latest_health"]["ci_status"] == "passed"
+
+
+async def test_assess_error_handling(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    from unittest.mock import AsyncMock
+
+    from maintainer_api.curation import CurationError
+    from maintainer_api.database import RepositoryRecord
+
+    github = FakeGitHub()
+    failing_agent = AsyncMock()
+    failing_agent.ainvoke.side_effect = RuntimeError("LLM exploded")
+
+    curation = CurationService(github, "gpt-4o-mini", failing_agent)
+
+    async with session_factory() as session:
+        repo = RepositoryRecord(
+            id=uuid4(),
+            github_id=666,
+            owner="org",
+            name="tools",
+            default_branch="main",
+            primary_language="Python",
+            private=False,
+            html_url="https://github.com/org/tools",
+            stars=10,
+        )
+        session.add(repo)
+        await session.commit()
+
+        with pytest.raises(CurationError, match="Unexpected curation workflow failure"):
+            await curation.assess(session, repo)
+
+        records = (await session.scalars(select(RepositoryAssessmentRecord))).all()
+        assert len(records) == 1
+        assert records[0].status == AssessmentStatus.FAILED.value
+        assert records[0].error == "Unexpected curation workflow failure"
+
+

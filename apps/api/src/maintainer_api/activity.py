@@ -13,7 +13,6 @@ from .domain import (
     DashboardActivity,
     DashboardStats,
     GitHubEvent,
-    HealthReport,
     MonitoringState,
     PunchCardEntry,
     RecentCommit,
