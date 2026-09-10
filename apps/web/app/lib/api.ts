@@ -303,3 +303,64 @@ export function repositoryDisplayStatus(repository: Repository): RepositoryStatu
 export function reproductionSnapshot(run: ReproductionRun): ReproductionRun {
   return run;
 }
+
+export type CoverageModule = {
+  name: string;
+  statements: number;
+  missed: number;
+  coverage_percent: number;
+  uncovered_lines: string[];
+};
+
+export type JulesCoverageSession = {
+  session_id: string;
+  status: "idle" | "queued" | "running" | "completed" | "failed";
+  plan_status?: string | null;
+  untested_cases: string[];
+  pull_request_url?: string | null;
+  logs?: string[];
+};
+
+export type CoverageSummary = {
+  coverage_percent: number;
+  threshold_percent: number;
+  passed_threshold: boolean;
+  total_statements: number;
+  total_missed: number;
+  tests_passed: number;
+  total_tests: number;
+  execution_time_seconds: number;
+  modules: CoverageModule[];
+  jules_session?: JulesCoverageSession | null;
+};
+
+export type CiWorkflowSummary = {
+  name: string;
+  path: string;
+  lint_status: "valid" | "invalid";
+  lint_errors: string[];
+};
+
+export type JulesCiSession = {
+  session_id: string;
+  status: "idle" | "queued" | "in_progress" | "completed" | "failed";
+  plan_status?: string | null;
+  bottlenecks: string[];
+  flakiness_notes: string[];
+  parallelization_suggestions: string[];
+  pull_request_url?: string | null;
+  url?: string | null;
+  logs: string[];
+};
+
+export type CiAuditSummary = {
+  actionlint_passed: boolean;
+  total_workflows: number;
+  workflows: CiWorkflowSummary[];
+  actionlint_output: string;
+  is_checking: boolean;
+  last_run_status: string;
+  jules_session?: JulesCiSession | null;
+};
+
+

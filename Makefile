@@ -1,4 +1,4 @@
-.PHONY: install dev api api-no-migrate web db-upgrade test test-e2e build lint-ci
+.PHONY: install dev api api-no-migrate web db-upgrade test test-cov coverage-html test-e2e build lint-ci
 
 PYTHON ?= python3
 VENV ?= .venv
@@ -37,11 +37,17 @@ lint-ci:
 	$(VENV_ACTIONLINT)
 
 test:
-	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 $(VENV_PYTHON) -m pytest -p pytest_asyncio.plugin apps/api/tests
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 $(VENV_PYTHON) -m pytest -p pytest_asyncio.plugin -p pytest_cov --cov=maintainer_api --cov-report=term-missing --cov-report=xml --cov-fail-under=80 apps/api/tests
 	$(VENV_PYTHON) -m ruff check apps/api/src apps/api/tests
 	$(VENV_ACTIONLINT)
 	npm --prefix apps/web run lint
 	npm --prefix apps/web run typecheck
+
+test-cov:
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 $(VENV_PYTHON) -m pytest -p pytest_asyncio.plugin -p pytest_cov --cov=maintainer_api --cov-report=term-missing --cov-report=xml --cov-fail-under=80 apps/api/tests
+
+coverage-html:
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 $(VENV_PYTHON) -m pytest -p pytest_asyncio.plugin -p pytest_cov --cov=maintainer_api --cov-report=html:htmlcov apps/api/tests
 
 test-e2e:
 	npm --prefix apps/web run test:e2e

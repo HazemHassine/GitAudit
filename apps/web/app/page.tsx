@@ -10,6 +10,8 @@ import { Navigation } from "./components/Navigation";
 import { PunchCard } from "./components/PunchCard";
 import { type FilterState, RepoFilters, applyFilters } from "./components/RepoFilters";
 import { StatsCards } from "./components/StatsCards";
+import CoverageCard from "./components/CoverageCard";
+import CiPipelinesAuditCard from "./components/CiPipelinesAuditCard";
 import {
   type Account,
   type DashboardActivity,
@@ -483,6 +485,12 @@ export default function CommandCenter() {
               </Link>
             )}
           </div>
+        </section>
+
+        {/* Audit Sentinels & AI Diagnostics (Issues #2 - #10) */}
+        <section className="sentinelsSection" style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "24px" }}>
+          <CoverageCard />
+          <CiPipelinesAuditCard />
         </section>
 
         {/* Activity Feed */}

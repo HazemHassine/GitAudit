@@ -56,10 +56,10 @@ class ActivityService:
             if repo.primary_language:
                 stats.languages[repo.primary_language] = stats.languages.get(repo.primary_language, 0) + 1
                 
-            if repo.latest_health:
-                health = HealthReport.model_validate(repo.latest_health)
-                if health.repository_status:
-                    stats.health_distribution[health.repository_status] = stats.health_distribution.get(health.repository_status, 0) + 1
+            if repo.latest_health and isinstance(repo.latest_health, dict):
+                repo_status = repo.latest_health.get("repository_status")
+                if repo_status:
+                    stats.health_distribution[repo_status] = stats.health_distribution.get(repo_status, 0) + 1
                     
         return stats
 
