@@ -1,5 +1,9 @@
 # GitAudit
 
+[![CI](https://github.com/HazemHassine/GitAudit/actions/workflows/ci.yml/badge.svg)](https://github.com/HazemHassine/GitAudit/actions/workflows/ci.yml)
+[![Security](https://github.com/HazemHassine/GitAudit/actions/workflows/security.yml/badge.svg)](https://github.com/HazemHassine/GitAudit/actions/workflows/security.yml)
+[![Docs](https://github.com/HazemHassine/GitAudit/actions/workflows/docs.yml/badge.svg)](https://github.com/HazemHassine/GitAudit/actions/workflows/docs.yml)
+
 An evidence-first AI curator for a developer's authorized GitHub repositories. It inventories the
 repositories visible to a configured GitHub App or fine-grained token, persists health evidence,
 and uses a bounded LangGraph workflow to propose improvements to profile metadata and

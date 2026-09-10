@@ -1,0 +1,14 @@
+# GitAudit Hadolint Configuration
+# Explicit documented justified suppressions for Dockerfile linting
+
+ignored:
+  # DL3008: Pin versions in apt-get install.
+  # Justification: In Debian slim container images, pinning exact apt package versions breaks container builds
+  # when Debian mirrors retire superseded point releases. --no-install-recommends and rm -rf /var/lib/apt/lists/*
+  # are enforced to maintain minimal image sizes.
+  - DL3008
+
+  # DL3013: Pin versions in pip install.
+  # Justification: Internal package installation from pyproject.toml relies on hatchling build
+  # metadata rather than pinned top-level pip flags. Dependencies are pinned/constrained in pyproject.toml.
+  - DL3013

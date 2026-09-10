@@ -345,7 +345,7 @@ class CoverageModule(BaseModel):
 
 class JulesTestSession(BaseModel):
     session_id: str
-    status: str = "idle"  # idle, queued, running, completed, failed
+    status: str = "idle"  # idle, queued, running, completed, failed, preview
     plan_status: str | None = None
     untested_cases: list[str] = Field(default_factory=list)
     pull_request_url: str | None = None
@@ -353,14 +353,17 @@ class JulesTestSession(BaseModel):
 
 
 class CoverageSummary(BaseModel):
-    coverage_percent: float
+    status: str = "available"  # available, unavailable, error
+    scope: str = "local"  # local, remote
+    message: str | None = None
+    coverage_percent: float | None = None
     threshold_percent: float = 80.0
-    passed_threshold: bool
-    total_statements: int
-    total_missed: int
-    tests_passed: int
-    total_tests: int
-    execution_time_seconds: float = 0.0
+    passed_threshold: bool | None = None
+    total_statements: int = 0
+    total_missed: int = 0
+    tests_passed: int | None = None
+    total_tests: int | None = None
+    execution_time_seconds: float | None = None
     modules: list[CoverageModule] = Field(default_factory=list)
     jules_session: JulesTestSession | None = None
 
@@ -372,56 +375,36 @@ class GenerateTestsRequest(BaseModel):
 
 
 class JulesCiSession(BaseModel):
-    session_id: str = "9916342744409535567"
-    status: str = "in_progress"  # idle, queued, in_progress, completed, failed
-    plan_status: str | None = "Analyzing workflow bottlenecks & job parallelization"
-    bottlenecks: list[str] = Field(
-        default_factory=lambda: [
-            "Monolithic 'test' job executes Python unit tests, Ruff, Actionlint, ESLint, TypeScript check, Next.js build, and Playwright end-to-end tests sequentially.",
-            "Duplicate package downloads without separate job caching layers for Python wheels and Node modules.",
-        ]
-    )
-    flakiness_notes: list[str] = Field(
-        default_factory=lambda: [
-            "Postgres container healthcheck retry bounds (interval 5s, timeout 3s) can cause flakiness under high CI load.",
-        ]
-    )
-    parallelization_suggestions: list[str] = Field(
-        default_factory=lambda: [
-            "Split monolithic 'test' into 3 concurrent jobs: 'backend-check', 'frontend-check', and 'e2e-suite'.",
-            "Run 'make lint-ci' early as a fast-fail gate before database provisioning.",
-        ]
-    )
-    pull_request_url: str | None = "https://github.com/HazemHassine/GitAudit/pull/11"
-    url: str | None = "https://jules.google.com/session/9916342744409535567"
-    logs: list[str] = Field(
-        default_factory=lambda: [
-            "Cloned HazemHassine/GitAudit@main",
-            "Loaded CI workflow: .github/workflows/ci.yml",
-            "Loaded CI optimizer: .github/workflows/jules-ci-analysis.yml",
-            "Evaluating job parallelization and matrix caching strategy...",
-        ]
-    )
+    session_id: str = ""
+    status: str = "idle"  # idle, queued, in_progress, completed, failed, preview
+    plan_status: str | None = None
+    bottlenecks: list[str] = Field(default_factory=list)
+    flakiness_notes: list[str] = Field(default_factory=list)
+    parallelization_suggestions: list[str] = Field(default_factory=list)
+    pull_request_url: str | None = None
+    url: str | None = None
+    logs: list[str] = Field(default_factory=list)
 
 
 class CiWorkflowSummary(BaseModel):
     name: str
     path: str
-    lint_status: str = "valid"
+    lint_status: str = "valid"  # valid, invalid, unavailable, error
     lint_errors: list[str] = Field(default_factory=list)
 
 
 class CiAuditSummary(BaseModel):
-    actionlint_passed: bool = True
-    total_workflows: int = 2
+    actionlint_passed: bool | None = None
+    total_workflows: int = 0
     workflows: list[CiWorkflowSummary] = Field(default_factory=list)
-    actionlint_output: str = "All workflows passed actionlint checks."
+    actionlint_output: str = ""
     is_checking: bool = False
-    last_run_status: str = "success"
-    jules_session: JulesCiSession | None = Field(default_factory=JulesCiSession)
+    last_run_status: str = "unavailable"  # success, failed, unavailable, error, attention
+    jules_session: JulesCiSession | None = None
+    scope: str = "local"  # local, remote
+    message: str | None = None
 
 
 class TriggerCiAnalysisRequest(BaseModel):
     focus: str = "bottlenecks, flakiness, parallelization"
     dry_run: bool = True
-

@@ -3,52 +3,6 @@
 import { useEffect, useState } from "react";
 import { type CiAuditSummary, request } from "../lib/api";
 
-const DEFAULT_CI_AUDIT: CiAuditSummary = {
-  actionlint_passed: true,
-  total_workflows: 2,
-  workflows: [
-    {
-      name: "CI",
-      path: ".github/workflows/ci.yml",
-      lint_status: "valid",
-      lint_errors: [],
-    },
-    {
-      name: "Jules CI Analysis",
-      path: ".github/workflows/jules-ci-analysis.yml",
-      lint_status: "valid",
-      lint_errors: [],
-    },
-  ],
-  actionlint_output: "All workflow files passed actionlint checks with 0 errors.",
-  is_checking: false,
-  last_run_status: "success",
-  jules_session: {
-    session_id: "9916342744409535567",
-    status: "in_progress",
-    plan_status: "Analyzing workflow bottlenecks & job parallelization",
-    bottlenecks: [
-      "Monolithic 'test' job executes Python unit tests, Ruff, Actionlint, ESLint, TypeScript check, Next.js build, and Playwright end-to-end tests sequentially.",
-      "Duplicate package downloads without separate job caching layers for Python wheels and Node modules.",
-    ],
-    flakiness_notes: [
-      "Postgres container healthcheck retry bounds (interval 5s, timeout 3s) can cause flakiness under high CI load.",
-    ],
-    parallelization_suggestions: [
-      "Split monolithic 'test' into 3 concurrent jobs: 'backend-check', 'frontend-check', and 'e2e-suite'.",
-      "Run 'make lint-ci' early as a fast-fail gate before database provisioning.",
-    ],
-    pull_request_url: "https://github.com/HazemHassine/GitAudit/pull/11",
-    url: "https://jules.google.com/session/9916342744409535567",
-    logs: [
-      "Cloned HazemHassine/GitAudit@main",
-      "Loaded CI workflow: .github/workflows/ci.yml",
-      "Loaded CI optimizer: .github/workflows/jules-ci-analysis.yml",
-      "Evaluating job parallelization and matrix caching strategy...",
-    ],
-  },
-};
-
 export type CiPipelinesAuditCardProps = {
   repositoryId?: string;
   audit?: CiAuditSummary;
@@ -60,10 +14,22 @@ export function CiPipelinesAuditCard({
   audit: initialAudit,
   onRefresh,
 }: CiPipelinesAuditCardProps) {
-  const [audit, setAudit] = useState<CiAuditSummary>(initialAudit || DEFAULT_CI_AUDIT);
+  const [localAudit, setLocalAudit] = useState<CiAuditSummary | null>(null);
+  const [loading, setLoading] = useState(!initialAudit);
   const [checking, setChecking] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [activeTab, setActiveTab] = useState<"findings" | "logs">("findings");
+
+  const [prevRepoId, setPrevRepoId] = useState(repositoryId);
+  const [prevInitialAudit, setPrevInitialAudit] = useState(initialAudit);
+  if (prevRepoId !== repositoryId || prevInitialAudit !== initialAudit) {
+    setPrevRepoId(repositoryId);
+    setPrevInitialAudit(initialAudit);
+    setLocalAudit(null);
+    setLoading(!initialAudit);
+  }
+
+  const audit = localAudit ?? initialAudit ?? null;
 
   useEffect(() => {
     if (initialAudit) {
@@ -77,13 +43,17 @@ export function CiPipelinesAuditCard({
           : `/api/v1/ci-audit/summary`;
         const data = await request<CiAuditSummary>(endpoint);
         if (isSubscribed && data) {
-          setAudit(data);
+          setLocalAudit(data);
         }
       } catch {
-        // Fallback to default audit state if endpoint is uninitialized
+        // Leave audit as null or error state
+      } finally {
+        if (isSubscribed) {
+          setLoading(false);
+        }
       }
     }
-    loadAudit();
+    void loadAudit();
     return () => {
       isSubscribed = false;
     };
@@ -97,7 +67,7 @@ export function CiPipelinesAuditCard({
         : `/api/v1/ci-audit/summary`;
       const data = await request<CiAuditSummary>(endpoint, { method: "POST" });
       if (data) {
-        setAudit(data);
+        setLocalAudit(data);
       }
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -107,7 +77,52 @@ export function CiPipelinesAuditCard({
     }
   };
 
+  if (loading) {
+    return (
+      <div className="panel ciAuditCard" style={{ marginBottom: "20px" }}>
+        <p className="label">ISSUE #4 / AUDIT: CI PIPELINES</p>
+        <p style={{ font: "500 11px DM Mono", color: "var(--muted)" }}>Loading CI pipeline audit...</p>
+      </div>
+    );
+  }
+
+  if (!audit) {
+    return (
+      <div className="panel ciAuditCard" style={{ marginBottom: "20px" }}>
+        <p className="label">ISSUE #4 / AUDIT: CI PIPELINES</p>
+        <p style={{ font: "500 11px DM Mono", color: "var(--orange)" }}>CI pipeline audit data unavailable.</p>
+      </div>
+    );
+  }
+
+  // Remote repository scope check
+  if (audit.scope === "remote") {
+    return (
+      <div className="panel ciAuditCard" style={{ marginBottom: "20px" }}>
+        <div className="curationHead" style={{ borderBottom: "1px solid var(--line)", paddingBottom: "16px" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+              <p className="label" style={{ margin: 0 }}>ISSUE #4 / AUDIT: CI PIPELINES</p>
+              <span className="status attention">REMOTE REPOSITORY SCOPE</span>
+            </div>
+            <h2 style={{ margin: "4px 0 0", fontSize: "20px", letterSpacing: "-.02em" }}>
+              Workflow Health &amp; CI Pipeline Audit
+            </h2>
+          </div>
+        </div>
+        <div style={{ marginTop: "16px", padding: "16px", background: "var(--paper)", border: "1px solid var(--line)", fontSize: "12px", color: "var(--muted)", lineHeight: 1.6 }}>
+          <p style={{ margin: 0 }}>
+            {audit.message ||
+              "Local workflow files and actionlint checks are restricted to the local workspace. Remote repository workflows require GitHub Actions API inspection."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const jules = audit.jules_session;
+  const isActionlintUnavailable = audit.last_run_status === "unavailable" || audit.actionlint_passed === null;
+  const isActionlintError = audit.last_run_status === "error";
 
   return (
     <div className="panel ciAuditCard" style={{ marginBottom: "20px" }}>
@@ -120,6 +135,10 @@ export function CiPipelinesAuditCard({
               <span className="status attention" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
                 <span className="dotPulse" /> CHECKING ACTIONLINT...
               </span>
+            ) : isActionlintUnavailable ? (
+              <span className="status attention">ACTIONLINT UNAVAILABLE</span>
+            ) : isActionlintError ? (
+              <span className="status degraded">EXECUTION ERROR</span>
             ) : audit.actionlint_passed ? (
               <span className="status healthy">VALIDATED (0 ERRORS)</span>
             ) : (
@@ -135,7 +154,7 @@ export function CiPipelinesAuditCard({
             className="refreshButton"
             disabled={checking}
             onClick={handleLintCheck}
-            title="Run local actionlint validation (no external API calls)"
+            title="Run local actionlint validation"
           >
             {checking ? "Checking…" : "Verify Actionlint"}
           </button>
@@ -152,50 +171,74 @@ export function CiPipelinesAuditCard({
       <div style={{ marginTop: "16px" }}>
         <div className="sectionTitle" style={{ fontSize: "11px", marginBottom: "10px" }}>
           <span>MONITORED WORKFLOWS ({audit.workflows.length})</span>
-          <small>DETERMINISTIC ACTIONLINT PASS</small>
+          <small>
+            {isActionlintUnavailable
+              ? "LINTER NOT FOUND"
+              : isActionlintError
+                ? "LINTER ERROR"
+                : audit.actionlint_passed
+                  ? "DETERMINISTIC ACTIONLINT PASS"
+                  : "ACTIONLINT ISSUES DETECTED"}
+          </small>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "10px" }}>
-          {audit.workflows.map((wf) => (
-            <div
-              key={wf.path}
-              style={{
-                border: "1px solid var(--line)",
-                background: "var(--paper)",
-                padding: "12px 14px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div>
-                <b style={{ fontSize: "12px", display: "block", color: "var(--ink)" }}>{wf.name}</b>
-                <code style={{ fontSize: "9px", color: "var(--muted)" }}>{wf.path}</code>
-              </div>
-              <span
-                style={{
-                  fontSize: "9px",
-                  fontFamily: "DM Mono, monospace",
-                  color: wf.lint_status === "valid" ? "var(--mint)" : "#ef6767",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                <i
+        {audit.workflows.length === 0 ? (
+          <div className="panelEmpty" style={{ padding: "16px" }}>
+            <b>No local workflow files</b>
+            <span>No GitHub Actions workflows found in .github/workflows/.</span>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "10px" }}>
+            {audit.workflows.map((wf) => {
+              const statusColor =
+                wf.lint_status === "valid"
+                  ? "var(--mint)"
+                  : wf.lint_status === "unavailable"
+                    ? "var(--orange)"
+                    : "#ef6767";
+
+              return (
+                <div
+                  key={wf.path}
                   style={{
-                    display: "inline-block",
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    background: wf.lint_status === "valid" ? "var(--mint)" : "#ef6767",
+                    border: "1px solid var(--line)",
+                    background: "var(--paper)",
+                    padding: "12px 14px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
-                />
-                {wf.lint_status.toUpperCase()}
-              </span>
-            </div>
-          ))}
-        </div>
+                >
+                  <div>
+                    <b style={{ fontSize: "12px", display: "block", color: "var(--ink)" }}>{wf.name}</b>
+                    <code style={{ fontSize: "9px", color: "var(--muted)" }}>{wf.path}</code>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      fontFamily: "DM Mono, monospace",
+                      color: statusColor,
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <i
+                      style={{
+                        display: "inline-block",
+                        width: "6px",
+                        height: "6px",
+                        borderRadius: "50%",
+                        background: statusColor,
+                      }}
+                    />
+                    {wf.lint_status.toUpperCase()}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Actionlint Output Drawer (Collapsible) */}
@@ -210,11 +253,17 @@ export function CiPipelinesAuditCard({
             fontSize: "10px",
             lineHeight: 1.6,
             overflowX: "auto",
-            borderLeft: "3px solid var(--mint)",
+            borderLeft: `3px solid ${
+              audit.actionlint_passed
+                ? "var(--mint)"
+                : isActionlintUnavailable
+                  ? "var(--orange)"
+                  : "#ef6767"
+            }`,
           }}
         >
-          <div style={{ color: "var(--muted)", marginBottom: "4px" }}>$ .venv/bin/actionlint</div>
-          <div>{audit.actionlint_output}</div>
+          <div style={{ color: "var(--muted)", marginBottom: "4px" }}>$ actionlint</div>
+          <div>{audit.actionlint_output || "No output recorded."}</div>
         </div>
       )}
 
@@ -244,9 +293,11 @@ export function CiPipelinesAuditCard({
                 >
                   JULES AI CI AGENT
                 </span>
-                <span style={{ fontSize: "10px", fontFamily: "DM Mono, monospace", color: "var(--muted)" }}>
-                  Session: #{jules.session_id}
-                </span>
+                {jules.session_id && (
+                  <span style={{ fontSize: "10px", fontFamily: "DM Mono, monospace", color: "var(--muted)" }}>
+                    Session: #{jules.session_id}
+                  </span>
+                )}
               </div>
               <h3 style={{ margin: "6px 0 0", fontSize: "14px", fontWeight: 600 }}>
                 {jules.plan_status || "Autonomous CI Pipeline Analysis"}
@@ -255,7 +306,13 @@ export function CiPipelinesAuditCard({
 
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span
-                className={`status ${jules.status === "in_progress" ? "attention" : "healthy"}`}
+                className={`status ${
+                  jules.status === "in_progress"
+                    ? "attention"
+                    : jules.status === "failed"
+                      ? "degraded"
+                      : "healthy"
+                }`}
                 style={{ fontSize: "9px" }}
               >
                 {jules.status === "in_progress" ? "● IN PROGRESS" : jules.status.toUpperCase()}
@@ -317,40 +374,46 @@ export function CiPipelinesAuditCard({
           {activeTab === "findings" && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "12px" }}>
               {/* Bottlenecks Card */}
-              <div style={{ background: "var(--paper)", border: "1px solid var(--line)", padding: "12px" }}>
-                <span style={{ fontSize: "9px", fontFamily: "DM Mono, monospace", color: "var(--orange)", fontWeight: 600, display: "block", marginBottom: "6px" }}>
-                  ⚡ BOTTLENECKS IDENTIFIED
-                </span>
-                <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "11px", color: "var(--ink)", lineHeight: 1.5 }}>
-                  {jules.bottlenecks.map((item, idx) => (
-                    <li key={idx} style={{ marginBottom: "4px" }}>{item}</li>
-                  ))}
-                </ul>
-              </div>
+              {jules.bottlenecks.length > 0 && (
+                <div style={{ background: "var(--paper)", border: "1px solid var(--line)", padding: "12px" }}>
+                  <span style={{ fontSize: "9px", fontFamily: "DM Mono, monospace", color: "var(--orange)", fontWeight: 600, display: "block", marginBottom: "6px" }}>
+                    ⚡ BOTTLENECKS IDENTIFIED
+                  </span>
+                  <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "11px", color: "var(--ink)", lineHeight: 1.5 }}>
+                    {jules.bottlenecks.map((item, idx) => (
+                      <li key={idx} style={{ marginBottom: "4px" }}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Parallelization Card */}
-              <div style={{ background: "var(--paper)", border: "1px solid var(--line)", padding: "12px" }}>
-                <span style={{ fontSize: "9px", fontFamily: "DM Mono, monospace", color: "#28704c", fontWeight: 600, display: "block", marginBottom: "6px" }}>
-                  🚀 PARALLELIZATION PROPOSALS
-                </span>
-                <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "11px", color: "var(--ink)", lineHeight: 1.5 }}>
-                  {jules.parallelization_suggestions.map((item, idx) => (
-                    <li key={idx} style={{ marginBottom: "4px" }}>{item}</li>
-                  ))}
-                </ul>
-              </div>
+              {jules.parallelization_suggestions.length > 0 && (
+                <div style={{ background: "var(--paper)", border: "1px solid var(--line)", padding: "12px" }}>
+                  <span style={{ fontSize: "9px", fontFamily: "DM Mono, monospace", color: "#28704c", fontWeight: 600, display: "block", marginBottom: "6px" }}>
+                    🚀 PARALLELIZATION PROPOSALS
+                  </span>
+                  <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "11px", color: "var(--ink)", lineHeight: 1.5 }}>
+                    {jules.parallelization_suggestions.map((item, idx) => (
+                      <li key={idx} style={{ marginBottom: "4px" }}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Flakiness Card */}
-              <div style={{ background: "var(--paper)", border: "1px solid var(--line)", padding: "12px" }}>
-                <span style={{ fontSize: "9px", fontFamily: "DM Mono, monospace", color: "#8b542f", fontWeight: 600, display: "block", marginBottom: "6px" }}>
-                  🔄 FLAKINESS SAFEGUARDS
-                </span>
-                <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "11px", color: "var(--ink)", lineHeight: 1.5 }}>
-                  {jules.flakiness_notes.map((item, idx) => (
-                    <li key={idx} style={{ marginBottom: "4px" }}>{item}</li>
-                  ))}
-                </ul>
-              </div>
+              {jules.flakiness_notes.length > 0 && (
+                <div style={{ background: "var(--paper)", border: "1px solid var(--line)", padding: "12px" }}>
+                  <span style={{ fontSize: "9px", fontFamily: "DM Mono, monospace", color: "#8b542f", fontWeight: 600, display: "block", marginBottom: "6px" }}>
+                    🔄 FLAKINESS SAFEGUARDS
+                  </span>
+                  <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "11px", color: "var(--ink)", lineHeight: 1.5 }}>
+                    {jules.flakiness_notes.map((item, idx) => (
+                      <li key={idx} style={{ marginBottom: "4px" }}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 

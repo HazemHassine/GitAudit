@@ -27,6 +27,8 @@ dependencies = [
 dev = [
   "actionlint-py>=1.7.12,<2",
   "aiosqlite>=0.20,<1",
+  "build>=1.2,<2",
+  "hatchling>=1.25,<2",
   "pytest>=8.3,<9",
   "pytest-asyncio>=0.24,<1",
   "pytest-cov>=5.0,<6",
@@ -35,6 +37,7 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/maintainer_api"]
+strict-naming = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

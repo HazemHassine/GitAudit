@@ -1,4 +1,4 @@
-.PHONY: install dev api api-no-migrate web db-upgrade test test-cov coverage-html test-e2e build lint-ci
+.PHONY: install dev api api-no-migrate web db-upgrade test test-cov coverage-html test-e2e build build-web build-api build-wheel check-bundle validate-compose lint-docker lint-iac lint-ci
 
 PYTHON ?= python3
 VENV ?= .venv
@@ -52,5 +52,26 @@ coverage-html:
 test-e2e:
 	npm --prefix apps/web run test:e2e
 
-build:
+build: build-web build-wheel
+
+build-web:
 	npm --prefix apps/web run build
+	node scripts/check_bundle_budget.mjs
+
+check-bundle: build-web
+
+build-wheel:
+	$(VENV_PYTHON) -m build --wheel --no-isolation --outdir dist/ apps/api
+	$(VENV_PYTHON) scripts/verify_wheel.py
+
+build-api: build-wheel
+
+validate-compose:
+	docker compose config --quiet
+
+lint-docker:
+	docker run --rm -i hadolint/hadolint:v2.14.0 hadolint --ignore DL3008 --ignore DL3013 - < apps/api/Dockerfile
+	docker run --rm -i hadolint/hadolint:v2.14.0 hadolint --ignore DL3008 --ignore DL3013 - < apps/web/Dockerfile
+
+lint-iac: validate-compose
+	docker run --rm -v "$(CURDIR)/apps/api/Dockerfile:/work/api/Dockerfile:ro" -v "$(CURDIR)/apps/web/Dockerfile:/work/web/Dockerfile:ro" bridgecrew/checkov:3.2.471 --framework dockerfile --directory /work --quiet

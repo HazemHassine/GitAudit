@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { API_URL, CoverageSummary, JulesCoverageSession, request } from "../lib/api";
 
 type CoverageCardProps = {
@@ -15,53 +15,74 @@ export default function CoverageCard({ repositoryId }: CoverageCardProps) {
   const [streamLogs, setStreamLogs] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCoverage = useCallback(async () => {
-    try {
-      const endpoint = repositoryId
-        ? `/api/v1/repositories/${repositoryId}/coverage`
-        : `/api/v1/coverage/summary`;
-      const data = await request<CoverageSummary>(endpoint);
-      setSummary(data);
-      if (data.jules_session) {
-        setJulesSession(data.jules_session);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load coverage");
-    } finally {
-      setLoading(false);
-    }
-  }, [repositoryId]);
+  const [prevRepoId, setPrevRepoId] = useState(repositoryId);
+  if (prevRepoId !== repositoryId) {
+    setPrevRepoId(repositoryId);
+    setSummary(null);
+    setLoading(true);
+    setGenerating(false);
+    setJulesSession(null);
+    setStreamLogs([]);
+    setError(null);
+  }
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void fetchCoverage(), 0);
+    let isSubscribed = true;
 
-    // Listen to SSE coverage stream
-    let eventSource: EventSource | null = null;
-    try {
-      eventSource = new EventSource(`${API_URL}/api/v1/coverage/stream`);
-      eventSource.addEventListener("coverage_snapshot", (e) => {
-        try {
-          const parsed = JSON.parse(e.data);
-          setSummary(parsed);
-          if (parsed.jules_session) setJulesSession(parsed.jules_session);
-        } catch {}
-      });
-      eventSource.addEventListener("session_update", (e) => {
-        try {
-          const parsed = JSON.parse(e.data);
-          setJulesSession(parsed);
-          if (parsed.logs) {
-            setStreamLogs((prev) => [...prev, ...parsed.logs.slice(-3)]);
+    async function loadCoverage() {
+      try {
+        const endpoint = repositoryId
+          ? `/api/v1/repositories/${repositoryId}/coverage`
+          : `/api/v1/coverage/summary`;
+        const data = await request<CoverageSummary>(endpoint);
+        if (isSubscribed) {
+          setSummary(data);
+          if (data.jules_session) {
+            setJulesSession(data.jules_session);
           }
-        } catch {}
-      });
-    } catch {}
+          setLoading(false);
+        }
+      } catch (e) {
+        if (isSubscribed) {
+          setError(e instanceof Error ? e.message : "Failed to load coverage");
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadCoverage();
+
+    // Listen to SSE coverage stream only when in global (unscoped) mode
+    let eventSource: EventSource | null = null;
+    if (!repositoryId) {
+      try {
+        eventSource = new EventSource(`${API_URL}/api/v1/coverage/stream`);
+        eventSource.addEventListener("coverage_snapshot", (e) => {
+          if (!isSubscribed) return;
+          try {
+            const parsed = JSON.parse(e.data);
+            setSummary(parsed);
+            if (parsed.jules_session) setJulesSession(parsed.jules_session);
+          } catch {}
+        });
+        eventSource.addEventListener("session_update", (e) => {
+          if (!isSubscribed) return;
+          try {
+            const parsed = JSON.parse(e.data);
+            setJulesSession(parsed);
+            if (parsed.logs) {
+              setStreamLogs((prev) => [...prev, ...parsed.logs.slice(-3)]);
+            }
+          } catch {}
+        });
+      } catch {}
+    }
 
     return () => {
-      window.clearTimeout(timer);
+      isSubscribed = false;
       if (eventSource) eventSource.close();
     };
-  }, [fetchCoverage]);
+  }, [repositoryId]);
 
   const handleGenerateTests = async () => {
     setGenerating(true);
@@ -95,9 +116,45 @@ export default function CoverageCard({ repositoryId }: CoverageCardProps) {
     );
   }
 
-  const covPct = summary?.coverage_percent ?? 81.5;
+  // Check remote repository scope
+  if (summary?.scope === "remote") {
+    return (
+      <section className="curationPanel" style={{ marginBottom: "24px" }}>
+        <div className="curationHead">
+          <div>
+            <p className="label">MILESTONE 4 / TEST COVERAGE & QUALITY (ISSUE #3)</p>
+            <h2>Test Execution & Coverage Sentinel</h2>
+          </div>
+          <div className="curationVerdict">
+            <span style={{ color: "var(--orange)" }}>REMOTE REPOSITORY SCOPE</span>
+            <b>Telemetry Unavailable</b>
+          </div>
+        </div>
+        <div
+          style={{
+            marginTop: "16px",
+            padding: "16px",
+            background: "var(--panel)",
+            border: "1px solid var(--line)",
+            fontSize: "12px",
+            color: "var(--muted)",
+            lineHeight: 1.6,
+          }}
+        >
+          <p style={{ margin: 0 }}>
+            {summary.message ||
+              "Local coverage telemetry is not available for remote repositories. Evidence collection requires local workspace test execution or integrating CI coverage artifacts."}
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const isAvailable = summary?.status === "available" && summary.coverage_percent !== null;
+  const isError = summary?.status === "error";
+  const covPct = summary?.coverage_percent ?? null;
   const threshold = summary?.threshold_percent ?? 80.0;
-  const passed = covPct >= threshold;
+  const passed = covPct !== null ? covPct >= threshold : false;
 
   return (
     <section className="curationPanel" style={{ marginBottom: "24px" }}>
@@ -107,14 +164,42 @@ export default function CoverageCard({ repositoryId }: CoverageCardProps) {
           <h2>Test Execution & Coverage Sentinel</h2>
         </div>
         <div className="curationVerdict">
-          <span style={{ color: passed ? "var(--mint)" : "var(--orange)" }}>
-            {passed ? "80% GATE PASSED" : "GATE VIOLATION"}
-          </span>
-          <b>{covPct}% Coverage</b>
+          {isAvailable ? (
+            <>
+              <span style={{ color: passed ? "var(--mint)" : "var(--orange)" }}>
+                {passed ? "80% GATE PASSED" : "GATE VIOLATION"}
+              </span>
+              <b>{covPct}% Coverage</b>
+            </>
+          ) : isError ? (
+            <>
+              <span style={{ color: "#ef6767" }}>PARSING ERROR</span>
+              <b>Invalid XML</b>
+            </>
+          ) : (
+            <>
+              <span style={{ color: "var(--orange)" }}>NO EVIDENCE</span>
+              <b>Coverage Unavailable</b>
+            </>
+          )}
         </div>
       </div>
 
       {error && <div className="inlineError" style={{ margin: "12px 0" }}>{error}</div>}
+      {summary?.message && !isAvailable && (
+        <div
+          style={{
+            margin: "12px 0",
+            padding: "10px 14px",
+            background: isError ? "rgba(239, 103, 103, 0.1)" : "rgba(255, 153, 106, 0.1)",
+            border: `1px solid ${isError ? "#ef6767" : "var(--orange)"}`,
+            fontSize: "11px",
+            fontFamily: "DM Mono, monospace",
+          }}
+        >
+          {summary.message}
+        </div>
+      )}
 
       {/* Primary Metrics Row */}
       <div
@@ -132,8 +217,8 @@ export default function CoverageCard({ repositoryId }: CoverageCardProps) {
           <span style={{ font: "500 9px DM Mono", color: "var(--muted)", textTransform: "uppercase" }}>
             Current Coverage
           </span>
-          <div style={{ font: "400 28px DM Mono", color: passed ? "#28704c" : "#b0481a", marginTop: "4px" }}>
-            {covPct}%
+          <div style={{ font: "400 28px DM Mono", color: isAvailable ? (passed ? "#28704c" : "#b0481a") : "var(--muted)", marginTop: "4px" }}>
+            {covPct !== null ? `${covPct}%` : "—"}
           </div>
           <small style={{ font: "10px DM Mono", color: "var(--muted)" }}>
             Target threshold: {threshold}%
@@ -145,13 +230,19 @@ export default function CoverageCard({ repositoryId }: CoverageCardProps) {
             Statements Covered
           </span>
           <div style={{ font: "400 28px DM Mono", marginTop: "4px" }}>
-            {(summary?.total_statements ?? 1855) - (summary?.total_missed ?? 343)}
-            <small style={{ fontSize: "14px", color: "var(--muted)" }}>
-              /{summary?.total_statements ?? 1855}
-            </small>
+            {isAvailable ? (
+              <>
+                {summary.total_statements - summary.total_missed}
+                <small style={{ fontSize: "14px", color: "var(--muted)" }}>
+                  /{summary.total_statements}
+                </small>
+              </>
+            ) : (
+              "—"
+            )}
           </div>
           <small style={{ font: "10px DM Mono", color: "var(--muted)" }}>
-            {summary?.total_missed ?? 343} missed branches
+            {isAvailable ? `${summary.total_missed} missed branches` : "No statement telemetry"}
           </small>
         </div>
 
@@ -159,11 +250,13 @@ export default function CoverageCard({ repositoryId }: CoverageCardProps) {
           <span style={{ font: "500 9px DM Mono", color: "var(--muted)", textTransform: "uppercase" }}>
             Pytest Suite Status
           </span>
-          <div style={{ font: "400 28px DM Mono", color: "#28704c", marginTop: "4px" }}>
-            {summary?.tests_passed ?? 35} PASS
+          <div style={{ font: "400 28px DM Mono", color: summary?.tests_passed != null ? "#28704c" : "var(--muted)", marginTop: "4px" }}>
+            {summary?.tests_passed != null ? `${summary.tests_passed} PASS` : "—"}
           </div>
           <small style={{ font: "10px DM Mono", color: "var(--muted)" }}>
-            0 failures · {summary?.execution_time_seconds ?? 5.34}s runtime
+            {summary?.tests_passed != null && summary?.total_tests != null
+              ? `${summary.total_tests - summary.tests_passed} failures · ${summary.execution_time_seconds ?? 0}s runtime`
+              : "Test counts not in coverage report"}
           </small>
         </div>
 
@@ -177,16 +270,34 @@ export default function CoverageCard({ repositoryId }: CoverageCardProps) {
                 display: "inline-block",
                 padding: "4px 8px",
                 font: "500 10px DM Mono",
-                background: passed ? "rgba(130, 243, 189, 0.25)" : "rgba(255, 153, 106, 0.25)",
-                color: passed ? "#28704c" : "#b0481a",
-                border: `1px solid ${passed ? "var(--mint)" : "var(--orange)"}`,
+                background: isAvailable
+                  ? passed
+                    ? "rgba(130, 243, 189, 0.25)"
+                    : "rgba(255, 153, 106, 0.25)"
+                  : "rgba(23, 33, 29, 0.08)",
+                color: isAvailable
+                  ? passed
+                    ? "#28704c"
+                    : "#b0481a"
+                  : "var(--muted)",
+                border: `1px solid ${
+                  isAvailable
+                    ? passed
+                      ? "var(--mint)"
+                      : "var(--orange)"
+                    : "var(--line)"
+                }`,
               }}
             >
-              {passed ? "✓ ENFORCED & PASSING" : "⚠ BLOCKS MERGE"}
+              {isAvailable
+                ? passed
+                  ? "✓ ENFORCED & PASSING"
+                  : "⚠ BLOCKS MERGE"
+                : "NO EVIDENCE RECORDED"}
             </span>
           </div>
           <small style={{ font: "10px DM Mono", color: "var(--muted)", display: "block", marginTop: "4px" }}>
-            pytest-cov in CI & Makefile
+            pytest-cov in CI &amp; Makefile
           </small>
         </div>
       </div>
@@ -195,14 +306,14 @@ export default function CoverageCard({ repositoryId }: CoverageCardProps) {
       <div style={{ marginTop: "16px", padding: "12px 16px", background: "var(--panel)", border: "1px solid var(--line)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", font: "500 9px DM Mono", marginBottom: "6px" }}>
           <span>COVERAGE PROGRESSION</span>
-          <span>{covPct}% / 100% (GATE: 80%)</span>
+          <span>{covPct !== null ? `${covPct}%` : "0%"} / 100% (GATE: {threshold}%)</span>
         </div>
         <div style={{ position: "relative", height: "10px", background: "#e8e6df", borderRadius: "2px", overflow: "hidden" }}>
           <div
             style={{
               height: "100%",
-              width: `${Math.min(100, Math.max(0, covPct))}%`,
-              background: passed ? "var(--mint)" : "var(--orange)",
+              width: `${Math.min(100, Math.max(0, covPct ?? 0))}%`,
+              background: isAvailable ? (passed ? "var(--mint)" : "var(--orange)") : "transparent",
               transition: "width 0.4s ease",
             }}
           />
@@ -212,12 +323,12 @@ export default function CoverageCard({ repositoryId }: CoverageCardProps) {
               position: "absolute",
               top: 0,
               bottom: 0,
-              left: "80%",
+              left: `${threshold}%`,
               width: "2px",
               background: "var(--ink)",
               zIndex: 2,
             }}
-            title="Minimum Threshold: 80%"
+            title={`Minimum Threshold: ${threshold}%`}
           />
         </div>
       </div>
@@ -315,8 +426,20 @@ export default function CoverageCard({ repositoryId }: CoverageCardProps) {
               <span
                 style={{
                   padding: "3px 6px",
-                  background: julesSession.status === "completed" ? "var(--mint)" : "rgba(23,33,29,0.08)",
-                  color: "var(--ink)",
+                  background:
+                    julesSession.status === "completed"
+                      ? "var(--mint)"
+                      : julesSession.status === "preview"
+                        ? "rgba(113, 92, 215, 0.2)"
+                        : julesSession.status === "failed"
+                          ? "rgba(239, 103, 103, 0.2)"
+                          : "rgba(23,33,29,0.08)",
+                  color:
+                    julesSession.status === "failed"
+                      ? "#b0481a"
+                      : julesSession.status === "preview"
+                        ? "#715cd7"
+                        : "var(--ink)",
                   textTransform: "uppercase",
                 }}
               >

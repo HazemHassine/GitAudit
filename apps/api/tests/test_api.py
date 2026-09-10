@@ -19,6 +19,8 @@ def test_openapi_exposes_scans_and_proposal_only_curation_resources() -> None:
     assert "/api/v1/coverage/stream" in paths
     assert "/api/v1/repositories/{repository_id}/coverage" in paths
     assert "/api/v1/ci-audit/summary" in paths
+    assert "get" in paths["/api/v1/ci-audit/summary"]
+    assert "post" in paths["/api/v1/ci-audit/summary"]
     assert "/api/v1/repositories/{repository_id}/ci-audit" in paths
     assert "/api/v1/repositories/{repository_id}/ci-audit/lint" in paths
     # DELETE excludes a repository locally; no GitHub mutation endpoint exists.

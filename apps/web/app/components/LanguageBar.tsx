@@ -24,7 +24,7 @@ export function LanguageBar({ languages }: { languages: Record<string, number> }
   };
 
   const total = Object.values(languages).reduce((acc, count) => acc + count, 0);
-  const sortedLanguages = Object.entries(languages).sort((a, b) => b[1] - a[1]);
+  const sortedLanguages = Object.entries(languages).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
 
   return (
     <div className="chartPanel">

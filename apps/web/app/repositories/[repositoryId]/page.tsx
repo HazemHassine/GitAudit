@@ -70,7 +70,8 @@ export default function RepositoryReport() {
   const selectedScan =
     history.find((scan) => scan.id === selectedScanId) ?? history[0] ?? null;
   const latestCompleted = history.find((scan) => scan.report);
-  const previousCompleted = history.filter((scan) => scan.report)[1];
+  const completedScans = history.filter((scan) => scan.report);
+  const previousCompleted = completedScans.length > 1 ? completedScans[1] : undefined;
   const comparison = useMemo(() => {
     if (!latestCompleted?.report) return [];
     const previous = new Map(

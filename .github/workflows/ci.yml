@@ -43,12 +43,33 @@ jobs:
         run: make install
       - name: Lint CI workflows
         run: make lint-ci
+      - name: Validate Docker Compose
+        run: make validate-compose
       - name: Verify migration
         run: make db-upgrade
       - name: Unit, integration, lint, and type checks
         run: make test
-      - name: Production web build
+      - name: Production build (Web & API)
         run: make build
+      - name: Lint API Dockerfile (Hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: apps/api/Dockerfile
+          config: .hadolint.yaml
+      - name: Lint Web Dockerfile (Hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: apps/web/Dockerfile
+          config: .hadolint.yaml
+      - name: Scan IaC security (Checkov)
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          framework: dockerfile
+          directory: apps
+          config_file: .checkov.yaml
+          quiet: true
+          soft_fail: false
+          output_format: cli
       - name: Verify Docker build
         run: docker compose build
       - name: Install browser

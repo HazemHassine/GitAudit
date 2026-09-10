@@ -48,12 +48,14 @@ from .domain import (
     GenerateTestsRequest,
     GitHubAccount,
     GitHubSettingsStatus,
+    JulesCiSession,
     JulesTestSession,
     MonitoringState,
     RepositorySummary,
     ReproductionRun,
     ScanSnapshot,
     SyncStatus,
+    TriggerCiAnalysisRequest,
 )
 from .github import GitHubConfigurationError, GitHubError, HttpGitHubReader
 from .observability import HTTP_DURATION, HTTP_REQUESTS, configure_logging
@@ -82,6 +84,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     curation_service = CurationService(github_reader, settings.openai_model, curation_agent)
     reproduction_service = ReproductionService(github_reader)
     coverage_service = CoverageService(settings)
+    ci_audit_service = CiAuditService()
     async with session_factory() as recovery_session:
         recovered = await repository_service.recover_interrupted_scans(recovery_session)
         if recovered:
@@ -101,6 +104,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.curation_service = curation_service
     app.state.reproduction_service = reproduction_service
     app.state.coverage_service = coverage_service
+    app.state.ci_audit_service = ci_audit_service
     app.state.sync_coordinator = coordinator
     coordinator.start()
     try:
@@ -602,9 +606,11 @@ async def stream_coverage(
 )
 async def get_repository_coverage(
     repository_id: UUID,
+    session: SessionDependency,
     service: CoverageDependency,
 ) -> CoverageSummary:
-    return service.get_coverage_summary()
+    repository = await find_repository(session, repository_id)
+    return service.get_repository_coverage_summary(repository)
 
 
 def get_ci_audit_service(request: Request) -> CiAuditService:
@@ -628,7 +634,8 @@ async def get_repository_ci_audit(
     session: SessionDependency,
     service: CiAuditDependency,
 ) -> CiAuditSummary:
-    return await service.get_ci_audit(session, repository_id)
+    repo = await find_repository(session, repository_id)
+    return await service.get_ci_audit_for_repository(repo)
 
 
 @app.get(
@@ -636,11 +643,34 @@ async def get_repository_ci_audit(
     response_model=CiAuditSummary,
     tags=["ci-audit"],
 )
+@app.post(
+    "/api/v1/ci-audit/summary",
+    response_model=CiAuditSummary,
+    tags=["ci-audit"],
+)
 async def get_general_ci_audit(
-    session: SessionDependency,
     service: CiAuditDependency,
 ) -> CiAuditSummary:
-    return await service.get_ci_audit(session, UUID("00000000-0000-0000-0000-000000000000"))
+    return await service.get_local_ci_audit()
+
+
+@app.post(
+    "/api/v1/ci-audit/lint",
+    response_model=CiAuditSummary,
+    tags=["ci-audit"],
+)
+async def trigger_general_ci_lint(
+    service: CiAuditDependency,
+) -> CiAuditSummary:
+    return await service.get_local_ci_audit()
+
+
+@app.post("/api/v1/ci-audit/jules", response_model=JulesCiSession, tags=["ci-audit"])
+async def trigger_general_ci_jules(
+    payload: TriggerCiAnalysisRequest,
+    service: CiAuditDependency,
+) -> JulesCiSession:
+    return await service.trigger_jules_analysis(payload)
 
 
 @app.post(
@@ -653,5 +683,5 @@ async def trigger_ci_lint(
     session: SessionDependency,
     service: CiAuditDependency,
 ) -> CiAuditSummary:
-    return await service.get_ci_audit(session, repository_id)
-
+    repo = await find_repository(session, repository_id)
+    return await service.get_ci_audit_for_repository(repo)
