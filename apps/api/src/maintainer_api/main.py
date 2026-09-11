@@ -533,11 +533,12 @@ async def cancel_reproduction(
 @app.get("/api/v1/reproductions/{reproduction_id}/stream", tags=["reproduction"])
 async def stream_reproduction(
     reproduction_id: UUID,
+    session: SessionDependency,
     service: ReproductionDependency,
 ):
     try:
-        # Check if the reproduction exists? 
-        pass
-    except ValueError:
-        pass
+        # Check if the reproduction exists
+        await service.get_reproduction(session, reproduction_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     return StreamingResponse(service.stream_reproduction(reproduction_id), media_type="text/event-stream")
