@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@playwright/test": "1.55.1",
-    "@types/node": "20.17.9",
+    "@types/node": "26.5.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.2",
