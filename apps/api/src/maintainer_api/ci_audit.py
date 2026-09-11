@@ -1,20 +1,25 @@
 import asyncio
-import os
-import re
 import shutil
 from pathlib import Path
 from uuid import UUID
 
-import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import RepositoryRecord
-from .domain import CiAuditSummary, CiWorkflowSummary, JulesCiSession, TriggerCiAnalysisRequest
+from .domain import (
+    CiAuditSummary,
+    CiWorkflowSummary,
+    CreateJulesSessionRequest,
+    JulesAuditArea,
+    JulesCiSession,
+    TriggerCiAnalysisRequest,
+)
+from .jules import JulesAuditService
 
 
 class CiAuditService:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, jules_service: JulesAuditService | None = None) -> None:
+        self.jules_service = jules_service or JulesAuditService()
 
     @staticmethod
     def is_local_repository(owner: str, name: str) -> bool:
@@ -178,27 +183,20 @@ class CiAuditService:
         repo = await session.get(RepositoryRecord, repository_id)
         return await self.get_ci_audit_for_repository(repo)
 
-    async def trigger_jules_analysis(self, request: TriggerCiAnalysisRequest) -> JulesCiSession:  # pragma: no cover - external Jules integration
-        """Create a Jules CI session, or return an explicit preview/unavailable state."""
-        if request.dry_run:
-            return JulesCiSession(status="preview", plan_status="Preview only; Jules API was not called.")
-        api_key = os.environ.get("JULES_API_KEY", "").strip()
-        if not api_key:
-            return JulesCiSession(status="unavailable", plan_status="Jules API key is not configured.")
-        payload = {
-            "prompt": f"Analyze GitAudit CI for bottlenecks, flakiness, and parallelization. Focus: {request.focus}. Inspect .github/workflows/ci.yml and Makefile. Open an optimization PR only when a concrete improvement is verified.",
-            "sourceContext": {"source": "sources/github/HazemHassine/GitAudit", "githubRepoContext": {"startingBranch": "main"}},
-            "automationMode": "AUTO_CREATE_PR", "requirePlanApproval": False,
-        }
-        try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                response = await client.post("https://jules.googleapis.com/v1alpha/sessions", headers={"X-Goog-Api-Key": api_key, "Content-Type": "application/json"}, json=payload)
-            if response.status_code not in (200, 201):
-                return JulesCiSession(status="failed", plan_status=f"Jules API request failed (HTTP {response.status_code}).")
-            data = response.json()
-            name = data.get("name") if isinstance(data, dict) else None
-            if not isinstance(name, str) or not re.fullmatch(r"sessions/[A-Za-z0-9_-]+", name):
-                return JulesCiSession(status="failed", plan_status="Jules API returned no valid session name.")
-            return JulesCiSession(session_id=name, status="in_progress", plan_status="Jules CI analysis session created.", url=f"https://jules.google.com/session/{name.split('/', 1)[1]}")
-        except (httpx.HTTPError, OSError, RuntimeError, ValueError):
-            return JulesCiSession(status="failed", plan_status="Jules service invocation failed.")
+    async def trigger_jules_analysis(self, request: TriggerCiAnalysisRequest) -> JulesCiSession:
+        """Compatibility route backed by the shared Jules audit session service."""
+        session = await self.jules_service.create_session(
+            CreateJulesSessionRequest(
+                audit_area=JulesAuditArea.CI,
+                focus=request.focus,
+                dry_run=request.dry_run,
+            )
+        )
+        return JulesCiSession(
+            session_id=session.session_id,
+            status=session.status.value,
+            plan_status=session.plan_status,
+            url=session.url,
+            pull_request_url=session.pull_request_url,
+            logs=session.activity,
+        )

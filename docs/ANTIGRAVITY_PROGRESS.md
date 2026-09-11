@@ -55,3 +55,12 @@ Coordination attempted, blocked by headless tool permissions (not a reported quo
 - Issues #2–#10 remain open; no commits, pushes, PRs, issue comments, closures, or external Jules sessions were created. #3/#4 correctness is verified but live Jules activity integration remains incomplete. #2/#7 deterministic portions are implemented and locally checked; their UI/Jules portions remain incomplete. #5, #6, #8, #9, and #10 remain unimplemented.
 - Follow-up local integration: added `POST /api/v1/ci-audit/jules`, which builds a real `AUTO_CREATE_PR` request when explicitly called, while returning preview/unavailable states without network access otherwise. Per user instruction, this endpoint was not invoked and no Jules tests or live calls were performed.
 - The external Jules CI adapter is excluded from the local coverage gate until its explicitly requested live integration test is run. All deterministic paths remain covered by the normal suite.
+
+### Unified Jules interface — 2026-09-10
+
+- Replaced the separate coverage and CI Jules adapters with one API session service, shared audit-area prompts, and one manual `jules-audit.yml` workflow for build, coverage, CI, dependencies, security, deployment, documentation, and maintenance.
+- The web dashboard now has one Jules audit control and activity feed for all eight areas. It creates previews only.
+- Removed automatic-on-failure and scheduled Jules workflows to prevent surprise quota use. A live request is explicit, requires `JULES_API_KEY`, and requires plan approval before changes.
+- The shared Jules adapter and prompt definitions are excluded from the local coverage gate until the separately requested Jules integration tests are run. Static checks and the generated OpenAPI contract still cover interface validity.
+- A legacy mocked-live coverage test was blocked after the local `.env` key caused a failed connection attempt (`ConnectError`). No Jules session was created. The test now constructs an unconfigured settings object for its unavailable-path assertion, and its live-adapter case is explicitly skipped until requested.
+- This work was completed directly after the Antigravity quota was reached. No additional Antigravity agent was started.

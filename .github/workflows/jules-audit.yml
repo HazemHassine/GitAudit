@@ -1,0 +1,63 @@
+name: Jules audit review
+
+on:
+  workflow_dispatch:
+    inputs:
+      audit_area:
+        description: Audit area to review
+        required: true
+        type: choice
+        default: build
+        options:
+          - build
+          - coverage
+          - ci
+          - dependencies
+          - security
+          - deployment
+          - documentation
+          - maintenance
+      focus:
+        description: Optional scoped review request
+        required: false
+        type: string
+      execution:
+        description: Preview only, or explicitly submit a plan-review session
+        required: true
+        type: choice
+        default: preview
+        options:
+          - preview
+          - live
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-review:
+    name: Jules ${{ inputs.audit_area }} review
+    runs-on: ubuntu-latest
+    if: github.repository == 'HazemHassine/GitAudit'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Prepare review preview
+        if: inputs.execution == 'preview'
+        run: >-
+          python3 scripts/jules_audit.py
+          --area "${{ inputs.audit_area }}"
+          --focus "${{ inputs.focus }}"
+
+      - name: Submit plan-review session
+        if: inputs.execution == 'live'
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+        run: >-
+          python3 scripts/jules_audit.py
+          --area "${{ inputs.audit_area }}"
+          --focus "${{ inputs.focus }}"
+          --live

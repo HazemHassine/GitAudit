@@ -143,9 +143,9 @@ docker compose build
 
 ## 4. Known Limitations & Subsequent Scope
 
-1. **Issues #2 and #7 Tracker Status:**
-   - In accordance with instructions, issues are **not** marked complete in `docs/ISSUES.md` and `docs/ANTIGRAVITY_PROGRESS.md` is preserved without edits.
+1. **Issue tracker status:**
+   - The implementation is attached to the open issues for review. Docker image builds remain a follow-up validation step.
 2. **UI & Jules Agent Integration:**
-   - Active health dashboard cards (`BuildAuditCard`, `DeploymentAuditCard`) and automated Jules API prompt workflows for build caching and deployment audits are deferred to the subsequent dedicated UI/Jules shared assignment.
+   - The active health dashboard includes Build and Deployment cards plus the unified Jules audit control. The control prepares a review preview and does not invoke Jules from the browser.
 3. **Checkov / Hadolint in Restricted Environments:**
    - In local sandboxed environments without Docker daemon access, `make validate-compose` validates Compose syntax natively; Hadolint and Checkov steps run in GitHub Actions CI via official container actions.

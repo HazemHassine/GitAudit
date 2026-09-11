@@ -408,3 +408,43 @@ class CiAuditSummary(BaseModel):
 class TriggerCiAnalysisRequest(BaseModel):
     focus: str = "bottlenecks, flakiness, parallelization"
     dry_run: bool = True
+
+
+class JulesAuditArea(StrEnum):
+    BUILD = "build"
+    COVERAGE = "coverage"
+    CI = "ci"
+    DEPENDENCIES = "dependencies"
+    SECURITY = "security"
+    DEPLOYMENT = "deployment"
+    DOCUMENTATION = "documentation"
+    MAINTENANCE = "maintenance"
+
+
+class JulesSessionStatus(StrEnum):
+    PREVIEW = "preview"
+    QUEUED = "queued"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    UNAVAILABLE = "unavailable"
+
+
+class CreateJulesSessionRequest(BaseModel):
+    audit_area: JulesAuditArea
+    focus: str | None = Field(default=None, max_length=500)
+    dry_run: bool = True
+
+
+class JulesAuditSession(BaseModel):
+    session_id: str
+    audit_area: JulesAuditArea
+    title: str
+    status: JulesSessionStatus
+    created_at: datetime
+    focus: str | None = None
+    plan_status: str | None = None
+    activity: list[str] = Field(default_factory=list)
+    prompt: str
+    pull_request_url: str | None = None
+    url: str | None = None

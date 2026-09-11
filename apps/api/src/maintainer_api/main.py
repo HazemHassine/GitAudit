@@ -40,6 +40,7 @@ from .domain import (
     CiAuditSummary,
     ConnectRepositoryRequest,
     CoverageSummary,
+    CreateJulesSessionRequest,
     CreateReproductionRequest,
     CurationAssessment,
     DashboardActivity,
@@ -48,6 +49,7 @@ from .domain import (
     GenerateTestsRequest,
     GitHubAccount,
     GitHubSettingsStatus,
+    JulesAuditSession,
     JulesCiSession,
     JulesTestSession,
     MonitoringState,
@@ -58,6 +60,7 @@ from .domain import (
     TriggerCiAnalysisRequest,
 )
 from .github import GitHubConfigurationError, GitHubError, HttpGitHubReader
+from .jules import JulesAuditService
 from .observability import HTTP_DURATION, HTTP_REQUESTS, configure_logging
 from .reproduction import ReproductionService
 from .service import (
@@ -83,8 +86,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     curation_agent = build_curation_agent(settings) if settings.openai_configured else None
     curation_service = CurationService(github_reader, settings.openai_model, curation_agent)
     reproduction_service = ReproductionService(github_reader)
-    coverage_service = CoverageService(settings)
-    ci_audit_service = CiAuditService()
+    jules_service = JulesAuditService(settings)
+    coverage_service = CoverageService(settings, jules_service)
+    ci_audit_service = CiAuditService(jules_service)
     async with session_factory() as recovery_session:
         recovered = await repository_service.recover_interrupted_scans(recovery_session)
         if recovered:
@@ -105,6 +109,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.reproduction_service = reproduction_service
     app.state.coverage_service = coverage_service
     app.state.ci_audit_service = ci_audit_service
+    app.state.jules_service = jules_service
     app.state.sync_coordinator = coordinator
     coordinator.start()
     try:
@@ -558,7 +563,7 @@ async def stream_reproduction(
 def get_coverage_service(request: Request) -> CoverageService:
     service = getattr(request.app.state, "coverage_service", None)
     if service is None:
-        service = CoverageService()
+        service = CoverageService(settings, get_jules_service(request))
         request.app.state.coverage_service = service
     return service
 
@@ -616,12 +621,47 @@ async def get_repository_coverage(
 def get_ci_audit_service(request: Request) -> CiAuditService:
     service = getattr(request.app.state, "ci_audit_service", None)
     if service is None:
-        service = CiAuditService()
+        service = CiAuditService(get_jules_service(request))
         request.app.state.ci_audit_service = service
     return service
 
 
 CiAuditDependency = Annotated[CiAuditService, Depends(get_ci_audit_service)]
+
+
+def get_jules_service(request: Request) -> JulesAuditService:
+    service = getattr(request.app.state, "jules_service", None)
+    if service is None:
+        service = JulesAuditService(settings)
+        request.app.state.jules_service = service
+    return service
+
+
+JulesDependency = Annotated[JulesAuditService, Depends(get_jules_service)]
+
+
+@app.get(
+    "/api/v1/jules/sessions",
+    response_model=list[JulesAuditSession],
+    tags=["jules"],
+)
+async def list_jules_sessions(service: JulesDependency) -> list[JulesAuditSession]:
+    """List sessions prepared through this API process, newest first."""
+    return service.list_sessions()
+
+
+@app.post(
+    "/api/v1/jules/sessions",
+    response_model=JulesAuditSession,
+    status_code=status.HTTP_201_CREATED,
+    tags=["jules"],
+)
+async def create_jules_session(
+    payload: CreateJulesSessionRequest,
+    service: JulesDependency,
+) -> JulesAuditSession:
+    """Prepare a review by default; a live request must set ``dry_run`` to false."""
+    return await service.create_session(payload)
 
 
 @app.get(

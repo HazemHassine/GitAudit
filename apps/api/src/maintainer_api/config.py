@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     max_concurrent_scans: int = Field(default=3, ge=1, le=10)
     openai_api_key: SecretStr | None = Field(default=None, repr=False)
     openai_model: str = "gpt-5.4-mini"
+    jules_api_key: SecretStr | None = Field(default=None, repr=False)
+    jules_source_repository: str = "HazemHassine/GitAudit"
+    jules_starting_branch: str = "main"
 
     @property
     def allowed_origins(self) -> list[str]:
@@ -62,6 +65,10 @@ class Settings(BaseSettings):
     @property
     def openai_configured(self) -> bool:
         return bool(self.openai_api_key)
+
+    @property
+    def jules_configured(self) -> bool:
+        return bool(self.jules_api_key)
 
 
 @lru_cache

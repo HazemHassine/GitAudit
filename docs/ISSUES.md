@@ -17,15 +17,15 @@ This document provides a comprehensive tracking register, technical architectura
 
 | Issue ID | Domain / Title | Category | Deterministic Scope | Jules API Scope | UI & Jules Activity Scope | Current Status |
 | :---: | :--- | :--- | :--- | :--- | :--- | :---: |
-| **#4** | [Audit: CI Pipelines](https://github.com/HazemHassine/GitAudit/issues/4) | Audit | CI YAML linting via `actionlint`, Makefile integration | CI bottleneck, flakiness & parallelization analysis | CI health card, live lint status, Jules bottleneck/PR drawer | Implemented (Review) |
-| **#2** | [Audit: Build System](https://github.com/HazemHassine/GitAudit/issues/2) | Audit | Strict compiler flags, fail on warnings, bundle size limits | Build caching optimizations & multi-stage Dockerfile review | Build card, bundle size budget meter, Jules cache suggestions | Open |
-| **#3** | [Audit: Test Coverage & Quality](https://github.com/HazemHassine/GitAudit/issues/3) | Audit | Minimum coverage threshold enforcement (e.g. 80%) in CI | `AUTO_CREATE_PR` session to generate unit/integration tests | Test & coverage card, live test run state, Jules test PR stream | **IN PROGRESS** (`CoverageSentinel`) |
-| **#5** | [Audit: Dependencies](https://github.com/HazemHassine/GitAudit/issues/5) | Audit | Dependabot/Renovate config for automated version updates & CVE alerts | Bloat identification, unused dependency removal, framework upgrades | Deps card, active CVE scanner indicator, Jules bloat/upgrade feed | Open |
-| **#6** | [Audit: Security](https://github.com/HazemHassine/GitAudit/issues/6) | Audit | CodeQL/SAST scanning, dependency vulnerability alerts, secret scanning | Complex logic audit for auth flaws, race conditions, architecture | Security card, SAST scan progress, Jules vulnerability findings | Open |
-| **#7** | [Audit: Deployment Configuration](https://github.com/HazemHassine/GitAudit/issues/7) | Audit | Lint IaC manifests (`tflint`, `checkov`, `hadolint`) | Review deployment scripts for least-privilege IAM and HA tweaks | Deployment card, IaC linting state, Jules IAM/HA tweaks | Open |
-| **#8** | [Audit: Documentation](https://github.com/HazemHassine/GitAudit/issues/8) | Audit | Automated broken link checker, docstring enforcement via linters | Autogenerate OpenAPI specs, architectural overviews, usage examples | Docs card, docstring coverage meter, Jules OpenAPI preview | Open |
-| **#9** | [Audit: Maintenance & Refactoring](https://github.com/HazemHassine/GitAudit/issues/9) | Audit | Strict code formatting (Black/Prettier) & cyclomatic complexity limits | Technical debt detection, modularization suggestions, refactoring PRs | Refactoring card, complexity heatmap, Jules modularization feed | Open |
-| **#10** | [Feature: Active Health UI](https://github.com/HazemHassine/GitAudit/issues/10) | Feature | Embed dynamic CI/CD, coverage, and security badges in header/README | Central hub hosting all audit cards & global Jules activity stream | Modular slot dashboard with live progress & Jules agent feeds | Open |
+| **#4** | [Audit: CI Pipelines](https://github.com/HazemHassine/GitAudit/issues/4) | Audit | CI YAML linting via `actionlint`, Makefile integration | Shared CI review prompt | CI health card and shared Jules preview feed | Implemented (review pending) |
+| **#2** | [Audit: Build System](https://github.com/HazemHassine/GitAudit/issues/2) | Audit | Strict compiler flags, bundle size limits, wheel and container policy checks | Shared build/caching review prompt | Build status card and shared Jules preview feed | Implemented (review pending) |
+| **#3** | [Audit: Test Coverage & Quality](https://github.com/HazemHassine/GitAudit/issues/3) | Audit | 80% coverage gate and coverage report | Shared coverage-review prompt | Coverage meter and shared Jules preview feed | In progress; no live Jules session |
+| **#5** | [Audit: Dependencies](https://github.com/HazemHassine/GitAudit/issues/5) | Audit | Dependabot and production dependency audits | Shared dependency-review prompt | Dependencies status card and shared Jules preview feed | Implemented (review pending) |
+| **#6** | [Audit: Security](https://github.com/HazemHassine/GitAudit/issues/6) | Audit | CodeQL, secret scanning, dependency scans | Shared security-review prompt | Security status card and shared Jules preview feed | Implemented (review pending) |
+| **#7** | [Audit: Deployment Configuration](https://github.com/HazemHassine/GitAudit/issues/7) | Audit | Compose, Dockerfile, and policy validation | Shared deployment-review prompt | Deployment status card and shared Jules preview feed | Implemented (review pending) |
+| **#8** | [Audit: Documentation](https://github.com/HazemHassine/GitAudit/issues/8) | Audit | Broken-link checks and OpenAPI contract export | Shared documentation-review prompt | Documentation status card and shared Jules preview feed | In progress; docstring enforcement remains |
+| **#9** | [Audit: Maintenance & Refactoring](https://github.com/HazemHassine/GitAudit/issues/9) | Audit | Formatting and complexity limits | Shared maintenance-review prompt | Maintenance status card and shared Jules preview feed | Open; complexity refactor remains |
+| **#10** | [Feature: Active Health UI](https://github.com/HazemHassine/GitAudit/issues/10) | Feature | Audit dashboard and repository health cards | Shared control and activity feed | Modular dashboard for all eight audit areas | Implemented (review pending) |
 
 ---
 
@@ -55,7 +55,7 @@ Base URL: `https://jules.googleapis.com/v1alpha`
        }
      },
      "automationMode": "AUTO_CREATE_PR",
-     "requirePlanApproval": false
+    "requirePlanApproval": true
    }
    ```
    *Fields:*
@@ -91,6 +91,13 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
     include_commit_log: true
 ```
 
+### GitAudit's unified interface
+- The API exposes `GET` and `POST /api/v1/jules/sessions`. Every audit area uses the same session model, prompt definitions, statuses, and plan-approval guardrail.
+- The dashboard's **Jules audit control** prepares previews only. It never invokes Jules from the browser; a preview shows the exact prompt and review targets.
+- The manual-only `.github/workflows/jules-audit.yml` workflow accepts one audit area at a time. Its default is a preview; a live run needs an explicit `live` selection and the `JULES_API_KEY` secret.
+- `scripts/jules_audit.py` shares the API prompt definitions. It is preview-first and requires `--live` for a network request.
+- The activity feed lists sessions prepared through the current API process. It never fabricates remote activity, findings, or pull requests. No live Jules session has been created as part of this work.
+
 ### Security Considerations for Jules Workflows
 - **Trigger Authorization**: For workflows triggered by GitHub issues or comments (`on: issues`), always enforce an allowlist check:
   ```yaml
@@ -114,10 +121,10 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
    - Integrated `actionlint` into `make test` so all CI workflows are automatically linted during local and automated testing.
    - Added an explicit `Lint CI workflows` step to `.github/workflows/ci.yml`.
    - Verified that all repository workflows pass `actionlint` with 0 errors.
-2. **Jules API [COMPLETED & VERIFIED]:**
-   - Created `.github/workflows/jules-ci-analysis.yml` using `google-labs-code/jules-invoke@v1` triggered on CI failure or manual `workflow_dispatch`.
-   - Created standalone executable CLI script `scripts/jules_ci_analysis.py` with `--dry-run`, `--focus`, `--include-ci-log`, and auto-loading of `.env`.
-   - Dispatched and verified live test session `sessions/9916342744409535567` on `HazemHassine/GitAudit` via the Jules API (`https://jules.googleapis.com/v1alpha`).
+2. **Jules API [PREVIEW-READY]:**
+   - CI now uses the shared `build_jules_prompt("ci")` definition and unified session API instead of a bespoke automatic-on-failure workflow.
+   - The manual `.github/workflows/jules-audit.yml` workflow and `scripts/jules_audit.py` are preview-first, require an explicit live request, and require plan approval before changes.
+   - No live Jules session was dispatched during this work.
 3. **UI Integration & Jules Activity Display:**
    - Embed a CI Pipelines status card/drawer in the UI dashboard displaying current workflow health, real-time Actionlint validation state, and active workflow run progress.
    - Surface live Jules CI analysis insights (bottlenecks identified, flakiness metrics, and suggested parallelization PR links).
@@ -126,8 +133,8 @@ Google provides the composite GitHub Action [`google-labs-code/jules-invoke@v1`]
 - `apps/api/pyproject.toml` (added `actionlint-py`)
 - `Makefile` (added `lint-ci` target, integrated into `make test`)
 - `.github/workflows/ci.yml` (added `Lint CI workflows` step)
-- `.github/workflows/jules-ci-analysis.yml` (created Jules CI analysis workflow)
-- `scripts/jules_ci_analysis.py` (created Python CLI for Jules CI analysis)
+- `.github/workflows/jules-audit.yml` (manual unified Jules review workflow)
+- `scripts/jules_audit.py` (shared preview-first CLI)
 - `.env.example` (added `JULES_API_KEY` placeholder)
 
 ---

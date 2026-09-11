@@ -398,6 +398,35 @@
         "title": "CoverageSummary",
         "type": "object"
       },
+      "CreateJulesSessionRequest": {
+        "properties": {
+          "audit_area": {
+            "$ref": "#/components/schemas/JulesAuditArea"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "focus": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          }
+        },
+        "required": [
+          "audit_area"
+        ],
+        "title": "CreateJulesSessionRequest",
+        "type": "object"
+      },
       "CreateReproductionRequest": {
         "properties": {
           "commit_sha": {
@@ -1146,6 +1175,108 @@
         "title": "HealthSignal",
         "type": "object"
       },
+      "JulesAuditArea": {
+        "enum": [
+          "build",
+          "coverage",
+          "ci",
+          "dependencies",
+          "security",
+          "deployment",
+          "documentation",
+          "maintenance"
+        ],
+        "title": "JulesAuditArea",
+        "type": "string"
+      },
+      "JulesAuditSession": {
+        "properties": {
+          "activity": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Activity",
+            "type": "array"
+          },
+          "audit_area": {
+            "$ref": "#/components/schemas/JulesAuditArea"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "focus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          },
+          "plan_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Status"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "pull_request_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pull Request Url"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JulesSessionStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "session_id",
+          "audit_area",
+          "title",
+          "status",
+          "created_at",
+          "prompt"
+        ],
+        "title": "JulesAuditSession",
+        "type": "object"
+      },
       "JulesCiSession": {
         "properties": {
           "bottlenecks": {
@@ -1222,6 +1353,18 @@
         },
         "title": "JulesCiSession",
         "type": "object"
+      },
+      "JulesSessionStatus": {
+        "enum": [
+          "preview",
+          "queued",
+          "in_progress",
+          "completed",
+          "failed",
+          "unavailable"
+        ],
+        "title": "JulesSessionStatus",
+        "type": "string"
       },
       "JulesTestSession": {
         "properties": {
@@ -2281,6 +2424,72 @@
         "summary": "Discover Repositories",
         "tags": [
           "github"
+        ]
+      }
+    },
+    "/api/v1/jules/sessions": {
+      "get": {
+        "description": "List sessions prepared through this API process, newest first.",
+        "operationId": "list_jules_sessions_api_v1_jules_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JulesAuditSession"
+                  },
+                  "title": "Response List Jules Sessions Api V1 Jules Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Jules Sessions",
+        "tags": [
+          "jules"
+        ]
+      },
+      "post": {
+        "description": "Prepare a review by default; a live request must set ``dry_run`` to false.",
+        "operationId": "create_jules_session_api_v1_jules_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJulesSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JulesAuditSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Jules Session",
+        "tags": [
+          "jules"
         ]
       }
     },

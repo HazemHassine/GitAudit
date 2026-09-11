@@ -1,26 +1,33 @@
 import asyncio
-import os
-import re
 import xml.etree.ElementTree as ET
 from collections.abc import AsyncIterator
 from pathlib import Path
-from uuid import uuid4
 
-import httpx
 import structlog
 
 from .config import Settings, get_settings
 from .database import RepositoryRecord
-from .domain import CoverageModule, CoverageSummary, GenerateTestsRequest, JulesTestSession
+from .domain import (
+    CoverageModule,
+    CoverageSummary,
+    CreateJulesSessionRequest,
+    GenerateTestsRequest,
+    JulesAuditArea,
+    JulesAuditSession,
+    JulesTestSession,
+)
+from .jules import JulesAuditService
 
 logger = structlog.get_logger(__name__)
 
-JULES_API_BASE_URL = "https://jules.googleapis.com/v1alpha"
-
-
 class CoverageService:
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        jules_service: JulesAuditService | None = None,
+    ) -> None:
         self.settings = settings or get_settings()
+        self.jules_service = jules_service or JulesAuditService(self.settings)
         self._active_session: JulesTestSession | None = None
         self._event_queues: list[asyncio.Queue[dict[str, str]]] = []
         self._coverage_cache: CoverageSummary | None = None
@@ -238,127 +245,31 @@ class CoverageService:
             )
 
     async def trigger_jules_test_generation(self, req: GenerateTestsRequest) -> JulesTestSession:
-        untested_edge_cases = [
-            "maintainer_api/curation.py: handle LLM prompt injection and malformed JSON responses",
-            "maintainer_api/github.py: handle rate-limiting 403 and secondary rate limits gracefully",
-            "maintainer_api/reproduction.py: test timeout cancellation when Docker command stalls",
-            "maintainer_api/coordinator.py: test max_concurrent_scans semaphore backpressure",
-        ]
-
-        if req.dry_run:
-            preview_id = f"preview-{uuid4().hex[:8]}"
-            session = JulesTestSession(
-                session_id=preview_id,
-                status="preview",
-                plan_status="[Preview] Simulated test generation (dry run)",
-                untested_cases=untested_edge_cases,
-                pull_request_url=None,
-                logs=[
-                    "Inspecting repository structure and pytest fixtures...",
-                    f"Target coverage threshold: {req.target_coverage}%",
-                    f"Focus module: {req.focus_module or 'all uncovered modules'}",
-                    "Identified 4 critical untested branches in curation, github, and reproduction",
-                    "Synthesized test plan preview (AUTO_CREATE_PR mode not executed in preview)",
-                ],
+        focus = req.focus_module or "all uncovered modules"
+        audit_session = await self.jules_service.create_session(
+            CreateJulesSessionRequest(
+                audit_area=JulesAuditArea.COVERAGE,
+                focus=f"{focus}; target coverage: {req.target_coverage}%",
+                dry_run=req.dry_run,
             )
-            self._active_session = session
-            await self._broadcast_event("session_update", session.model_dump_json())
-            return session
-
-        api_key = os.environ.get("JULES_API_KEY")
-        if not api_key:
-            session = JulesTestSession(
-                session_id="",
-                status="unavailable",
-                plan_status="Jules API key not configured (JULES_API_KEY missing)",
-                untested_cases=untested_edge_cases,
-                pull_request_url=None,
-                logs=["Jules API key not configured. Set JULES_API_KEY to enable automated test generation."],
-            )
-            self._active_session = session
-            await self._broadcast_event("session_update", session.model_dump_json())
-            return session
-
-        prompt = (
-            f"Generate unit tests using pytest for uncovered code in GitAudit (apps/api/src/maintainer_api/). "
-            f"Target coverage: {req.target_coverage}%. "
-            f"Focus: {req.focus_module or 'curation.py, github.py, reproduction.py'}. "
-            "Write tests in apps/api/tests/ following existing fixture conventions. Ensure make test passes with 0 errors."
         )
-        payload = {
-            "prompt": prompt,
-            "sourceContext": {
-                "source": "sources/github/HazemHassine/GitAudit",
-                "githubRepoContext": {"startingBranch": "main"},
-            },
-            "automationMode": "AUTO_CREATE_PR",
-            "requirePlanApproval": False,
-        }
+        session = self._to_coverage_session(audit_session)
+        self._active_session = session
+        await self._broadcast_event("session_update", session.model_dump_json())
+        return session
 
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                res = await client.post(
-                    f"{JULES_API_BASE_URL}/sessions",
-                    headers={"X-Goog-Api-Key": api_key, "Content-Type": "application/json"},
-                    json=payload,
-                )
-                if res.status_code in (200, 201):
-                    try:
-                        data = res.json()
-                    except ValueError:
-                        data = {}
-                    real_session_id = data.get("name") if isinstance(data, dict) else None
-                    if not isinstance(real_session_id, str) or not re.fullmatch(r"sessions/[A-Za-z0-9_-]+", real_session_id):
-                        logger.error("jules_session_invalid_name", status_code=res.status_code)
-                        session = JulesTestSession(
-                            session_id="",
-                            status="failed",
-                            plan_status="Jules API returned response without valid session name",
-                            untested_cases=untested_edge_cases,
-                            pull_request_url=None,
-                            logs=["Jules API response did not contain a valid session name."],
-                        )
-                        self._active_session = session
-                        await self._broadcast_event("session_update", session.model_dump_json())
-                        return session
-
-                    session = JulesTestSession(
-                        session_id=real_session_id,
-                        status="running",
-                        plan_status="Jules session created with AUTO_CREATE_PR",
-                        untested_cases=untested_edge_cases,
-                        pull_request_url=None,
-                        logs=[f"Session created: {real_session_id}", "Waiting for plan generation..."],
-                    )
-                    self._active_session = session
-                    await self._broadcast_event("session_update", session.model_dump_json())
-                    return session
-                else:
-                    logger.error("jules_session_failed", status_code=res.status_code)
-                    session = JulesTestSession(
-                        session_id="",
-                        status="failed",
-                        plan_status=f"Jules session creation failed with HTTP {res.status_code}",
-                        untested_cases=untested_edge_cases,
-                        pull_request_url=None,
-                        logs=[f"Error: Jules API request failed with HTTP {res.status_code}"],
-                    )
-                    self._active_session = session
-                    await self._broadcast_event("session_update", session.model_dump_json())
-                    return session
-        except (httpx.HTTPError, OSError, RuntimeError) as e:
-            logger.error("jules_invocation_error", error_type=type(e).__name__)
-            session = JulesTestSession(
-                session_id="",
-                status="failed",
-                plan_status="Jules service invocation failed",
-                untested_cases=untested_edge_cases,
-                pull_request_url=None,
-                logs=["Error: An error occurred while communicating with Jules API."],
-            )
-            self._active_session = session
-            await self._broadcast_event("session_update", session.model_dump_json())
-            return session
+    def _to_coverage_session(self, session: JulesAuditSession) -> JulesTestSession:
+        status = "running" if session.status.value in {"in_progress", "queued"} else session.status.value
+        return JulesTestSession(
+            session_id="" if session.status.value in {"failed", "unavailable"} else session.session_id,
+            status=status,
+            plan_status=session.plan_status,
+            untested_cases=self.jules_service.review_targets("coverage"),
+            pull_request_url=session.pull_request_url,
+            logs=[f"Error: {entry}" for entry in session.activity]
+            if session.status.value == "failed"
+            else session.activity,
+        )
 
     async def _broadcast_event(self, event_type: str, data: str) -> None:
         for q in self._event_queues:

@@ -337,6 +337,38 @@ export type CoverageSummary = {
   jules_session?: JulesCoverageSession | null;
 };
 
+export type JulesAuditArea =
+  | "build"
+  | "coverage"
+  | "ci"
+  | "dependencies"
+  | "security"
+  | "deployment"
+  | "documentation"
+  | "maintenance";
+
+export type JulesAuditStatus =
+  | "preview"
+  | "queued"
+  | "in_progress"
+  | "completed"
+  | "failed"
+  | "unavailable";
+
+export type JulesAuditSession = {
+  session_id: string;
+  audit_area: JulesAuditArea;
+  title: string;
+  status: JulesAuditStatus;
+  created_at: string;
+  focus: string | null;
+  plan_status: string | null;
+  activity: string[];
+  prompt: string;
+  pull_request_url: string | null;
+  url: string | null;
+};
+
 export type CiWorkflowSummary = {
   name: string;
   path: string;
