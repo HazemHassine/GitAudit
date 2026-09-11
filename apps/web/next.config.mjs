@@ -5,5 +5,8 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  experimental: {
+    useTypeScriptCli: false,
+  },
 };
 export default nextConfig;
