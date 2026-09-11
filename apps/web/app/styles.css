@@ -209,6 +209,64 @@ footer { display:flex;justify-content:space-between;color:#929792;font:9px DM Mo
 .inlineError { border-left:2px solid #ef6767; margin:14px 0; padding:9px 12px; color:#8e2c2c; font-size:10px; }
 .panelAction { display:block; margin-top:14px; text-align:center; }
 
+/* Health dashboard */
+.healthDashboard { margin:24px 0; }
+.healthDashboardHead { display:flex; justify-content:space-between; gap:24px; align-items:flex-end; margin-bottom:14px; }
+.healthDashboardHead h2 { margin:0; font-size:20px; letter-spacing:-.03em; }
+.healthDashboardHead>span { max-width:300px; color:var(--muted); font:9px/1.5 DM Mono; text-align:right; }
+.auditCardGrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.auditStatusCard { border:1px solid var(--line); background:var(--panel); padding:22px; min-height:220px; display:flex; flex-direction:column; }
+.auditStatusHead { display:flex; justify-content:space-between; align-items:start; gap:12px; }
+.auditStatusHead .label { margin:0; }
+.auditStatusCard h2 { margin:18px 0 8px; font-size:18px; letter-spacing:-.025em; }
+.auditStatusCard>p { color:var(--muted); font-size:11px; line-height:1.55; margin:0; }
+.auditStatusCard ul { margin:16px 0 0; padding:0; list-style:none; display:grid; gap:7px; color:var(--ink); font:9px DM Mono; }
+.auditStatusCard li:before { content:"•"; color:var(--mint); margin-right:8px; }
+.auditCommand { margin-top:auto; padding-top:17px; color:var(--muted); font:9px DM Mono; }
+.status.configured { background:#82f3bd35; color:#28704c; }
+.status.planned { background:#d8d7cf80; color:#727975; }
+
+.julesActivityFeed { border:1px solid var(--ink); background:var(--paper); padding:22px; margin:0 0 16px; box-shadow:5px 5px 0 #17211d0b; }
+.julesActivityHead { display:flex; justify-content:space-between; gap:24px; align-items:flex-start; }
+.julesActivityHead h2 { margin:6px 0; font-size:18px; letter-spacing:-.025em; }
+.julesActivityHead p:not(.label) { max-width:650px; color:var(--muted); font-size:11px; line-height:1.55; margin:0; }
+.julesProcessNote { color:var(--muted); font:9px/1.5 DM Mono; max-width:180px; text-align:right; }
+.julesControls { display:grid; grid-template-columns:minmax(150px,.7fr) minmax(220px,2fr) auto; gap:10px; margin-top:18px; align-items:end; }
+.julesControls label { display:grid; gap:5px; color:var(--muted); font:9px DM Mono; text-transform:uppercase; }
+.julesControls select,.julesControls input { width:100%; min-height:35px; border:1px solid var(--line); border-radius:0; background:var(--panel); color:var(--ink); font:11px DM Mono; padding:0 9px; }
+.julesPrepare { min-height:35px; border:0; background:var(--ink); color:white; padding:0 14px; cursor:pointer; font:600 9px DM Mono; letter-spacing:.04em; text-transform:uppercase; }
+.julesPrepare:disabled { cursor:wait; opacity:.65; }
+.julesEmpty { margin:16px 0 0; color:var(--muted); font:10px DM Mono; }
+.julesSessionList { display:grid; gap:8px; list-style:none; padding:0; margin:16px 0 0; }
+.julesSessionList>li { border:1px solid var(--line); background:var(--panel); padding:12px 14px; }
+.julesSessionSummary { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
+.julesSessionSummary .label { margin:0 0 5px; }
+.julesSessionSummary b { display:block; font-size:12px; }
+.julesSessionSummary span:not(.status) { display:block; color:var(--muted); font:9px/1.5 DM Mono; margin-top:5px; }
+.status.jules-preview { background:#715cd720; color:#715cd7; }
+.status.jules-queued,.status.jules-in_progress { background:#ff996a25; color:#8b542f; }
+.status.jules-completed { background:#82f3bd35; color:#28704c; }
+.status.jules-failed { background:#ef676720; color:#a83232; }
+.status.jules-unavailable { background:#d8d7cf80; color:#727975; }
+.julesSessionList details { border-top:1px solid var(--line); margin-top:10px; padding-top:9px; }
+.julesSessionList summary { cursor:pointer; color:var(--muted); font:9px DM Mono; }
+.julesSessionList pre { white-space:pre-wrap; background:var(--ink); color:#d8d7cf; font:9px/1.6 DM Mono; margin:9px 0; padding:10px; }
+.julesSessionList ul { display:grid; gap:4px; margin:0; padding-left:16px; color:var(--muted); font:10px/1.4 DM Mono; }
+.julesSessionList a { display:inline-block; color:var(--ink); font:9px DM Mono; margin:10px 10px 0 0; text-decoration:underline; }
+.coverageMetric { display:flex; align-items:baseline; gap:8px; margin:18px 0 8px; }
+.coverageMetric b { font:400 28px/1 DM Mono; letter-spacing:-.06em; }
+.coverageMetric span { color:var(--muted); font:9px DM Mono; }
+.coverageMeter { height:8px; background:#e8e6df; overflow:hidden; position:relative; }
+.coverageMeter i { background:var(--mint); display:block; height:100%; }
+.coverageMeter em { background:var(--ink); display:block; height:100%; position:absolute; top:0; width:2px; }
+.coverageModules { margin-top:12px; color:var(--muted); font:9px DM Mono; }
+.coverageModules summary { cursor:pointer; }
+.coverageModules ul { display:grid; gap:5px; list-style:none; margin:8px 0 0; padding:0; }
+.coverageModules li { display:flex; justify-content:space-between; gap:12px; }
+
+@media (max-width:900px) { .auditCardGrid { grid-template-columns:1fr; } }
+@media (max-width:620px) { .healthDashboardHead,.julesActivityHead { display:grid; }.healthDashboardHead>span,.julesProcessNote { text-align:left; }.julesControls { grid-template-columns:1fr; } }
+
 @media (max-width:900px) {
   .repo { grid-template-columns:minmax(220px,1fr) auto auto; }
   .repo .miniScore { display:none; }

@@ -10,12 +10,14 @@ import { Navigation } from "./components/Navigation";
 import { PunchCard } from "./components/PunchCard";
 import { type FilterState, RepoFilters, applyFilters } from "./components/RepoFilters";
 import { StatsCards } from "./components/StatsCards";
+import { HealthDashboard } from "./components/HealthDashboard";
 import {
   type Account,
   type DashboardActivity,
   type DashboardStats,
   type GitHubSettings,
   type Repository,
+  type RepositoryStatus,
   type Scan,
   type SyncStatus,
   label,
@@ -177,7 +179,8 @@ export default function CommandCenter() {
     () =>
       repositories.reduce(
         (result, repository) => {
-          result[repositoryDisplayStatus(repository)] += 1;
+          const status = repositoryDisplayStatus(repository);
+          result[status] = (result[status] ?? 0) + 1;
           return result;
         },
         {
@@ -187,7 +190,7 @@ export default function CommandCenter() {
           unscanned: 0,
           scanning: 0,
           scan_failed: 0,
-        },
+        } as Record<RepositoryStatus, number>,
       ),
     [repositories],
   );
@@ -484,6 +487,8 @@ export default function CommandCenter() {
             )}
           </div>
         </section>
+
+        <HealthDashboard />
 
         {/* Activity Feed */}
         {dashboardActivity && dashboardActivity.events.length > 0 && (

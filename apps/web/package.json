@@ -8,10 +8,11 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
+    "check:bundle": "node ../../scripts/check_bundle_budget.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "next": "16.3.2",
+    "next": "^16.3.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.10.1"

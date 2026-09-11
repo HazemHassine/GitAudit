@@ -1,0 +1,3 @@
+# Checkov scans Dockerfiles; Compose syntax is validated with docker compose config.
+framework:
+  - dockerfile

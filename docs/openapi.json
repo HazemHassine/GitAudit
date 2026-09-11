@@ -1,0 +1,3420 @@
+{
+  "components": {
+    "schemas": {
+      "AISettingsStatus": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "provider": {
+            "default": "openai",
+            "title": "Provider",
+            "type": "string"
+          },
+          "workflow": {
+            "default": "langgraph",
+            "title": "Workflow",
+            "type": "string"
+          }
+        },
+        "required": [
+          "configured",
+          "model",
+          "prompt_version"
+        ],
+        "title": "AISettingsStatus",
+        "type": "object"
+      },
+      "AssessmentStatus": {
+        "enum": [
+          "running",
+          "completed",
+          "failed"
+        ],
+        "title": "AssessmentStatus",
+        "type": "string"
+      },
+      "CiAuditSummary": {
+        "properties": {
+          "actionlint_output": {
+            "default": "",
+            "title": "Actionlint Output",
+            "type": "string"
+          },
+          "actionlint_passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actionlint Passed"
+          },
+          "is_checking": {
+            "default": false,
+            "title": "Is Checking",
+            "type": "boolean"
+          },
+          "jules_session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JulesCiSession"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_run_status": {
+            "default": "unavailable",
+            "title": "Last Run Status",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "scope": {
+            "default": "local",
+            "title": "Scope",
+            "type": "string"
+          },
+          "total_workflows": {
+            "default": 0,
+            "title": "Total Workflows",
+            "type": "integer"
+          },
+          "workflows": {
+            "items": {
+              "$ref": "#/components/schemas/CiWorkflowSummary"
+            },
+            "title": "Workflows",
+            "type": "array"
+          }
+        },
+        "title": "CiAuditSummary",
+        "type": "object"
+      },
+      "CiWorkflowSummary": {
+        "properties": {
+          "lint_errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lint Errors",
+            "type": "array"
+          },
+          "lint_status": {
+            "default": "valid",
+            "title": "Lint Status",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "path"
+        ],
+        "title": "CiWorkflowSummary",
+        "type": "object"
+      },
+      "CommitWeek": {
+        "properties": {
+          "days": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "week": {
+            "title": "Week",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "week",
+          "total"
+        ],
+        "title": "CommitWeek",
+        "type": "object"
+      },
+      "ConnectRepositoryRequest": {
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "owner": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "title": "Owner",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner",
+          "name"
+        ],
+        "title": "ConnectRepositoryRequest",
+        "type": "object"
+      },
+      "ContributionCalendar": {
+        "properties": {
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/ContributionWeek"
+            },
+            "title": "Weeks",
+            "type": "array"
+          }
+        },
+        "title": "ContributionCalendar",
+        "type": "object"
+      },
+      "ContributionDay": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "level": {
+            "default": 0,
+            "title": "Level",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "count"
+        ],
+        "title": "ContributionDay",
+        "type": "object"
+      },
+      "ContributionWeek": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/ContributionDay"
+            },
+            "title": "Days",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days"
+        ],
+        "title": "ContributionWeek",
+        "type": "object"
+      },
+      "CoverageModule": {
+        "properties": {
+          "coverage_percent": {
+            "title": "Coverage Percent",
+            "type": "number"
+          },
+          "missed": {
+            "title": "Missed",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "statements": {
+            "title": "Statements",
+            "type": "integer"
+          },
+          "uncovered_lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Uncovered Lines",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "statements",
+          "missed",
+          "coverage_percent"
+        ],
+        "title": "CoverageModule",
+        "type": "object"
+      },
+      "CoverageSummary": {
+        "properties": {
+          "coverage_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Percent"
+          },
+          "execution_time_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Time Seconds"
+          },
+          "jules_session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JulesTestSession"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "modules": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageModule"
+            },
+            "title": "Modules",
+            "type": "array"
+          },
+          "passed_threshold": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed Threshold"
+          },
+          "scope": {
+            "default": "local",
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "default": "available",
+            "title": "Status",
+            "type": "string"
+          },
+          "tests_passed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tests Passed"
+          },
+          "threshold_percent": {
+            "default": 80.0,
+            "title": "Threshold Percent",
+            "type": "number"
+          },
+          "total_missed": {
+            "default": 0,
+            "title": "Total Missed",
+            "type": "integer"
+          },
+          "total_statements": {
+            "default": 0,
+            "title": "Total Statements",
+            "type": "integer"
+          },
+          "total_tests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tests"
+          }
+        },
+        "title": "CoverageSummary",
+        "type": "object"
+      },
+      "CreateJulesSessionRequest": {
+        "properties": {
+          "audit_area": {
+            "$ref": "#/components/schemas/JulesAuditArea"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "focus": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          }
+        },
+        "required": [
+          "audit_area"
+        ],
+        "title": "CreateJulesSessionRequest",
+        "type": "object"
+      },
+      "CreateReproductionRequest": {
+        "properties": {
+          "commit_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Sha"
+          },
+          "custom_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Command"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "workflow_run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Run Id"
+          }
+        },
+        "title": "CreateReproductionRequest",
+        "type": "object"
+      },
+      "CurationAnalysis": {
+        "properties": {
+          "classification": {
+            "$ref": "#/components/schemas/RelevanceClassification"
+          },
+          "concerns": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Concerns",
+            "type": "array"
+          },
+          "confidence": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "integer"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/CurationRecommendation"
+            },
+            "maxItems": 8,
+            "title": "Recommendations",
+            "type": "array"
+          },
+          "strengths": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Strengths",
+            "type": "array"
+          },
+          "summary": {
+            "maxLength": 800,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "classification",
+          "confidence",
+          "summary"
+        ],
+        "title": "CurationAnalysis",
+        "type": "object"
+      },
+      "CurationAssessment": {
+        "properties": {
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurationAnalysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "base_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Sha"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "scan_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Id"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AssessmentStatus",
+            "default": "running"
+          }
+        },
+        "required": [
+          "repository_id",
+          "model",
+          "prompt_version"
+        ],
+        "title": "CurationAssessment",
+        "type": "object"
+      },
+      "CurationRecommendation": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RecommendationKind"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/RecommendationPriority"
+          },
+          "rationale": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Rationale",
+            "type": "string"
+          },
+          "readme_plan": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Readme Plan",
+            "type": "array"
+          },
+          "suggested_description": {
+            "anyOf": [
+              {
+                "maxLength": 350,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Description"
+          },
+          "suggested_topics": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Suggested Topics",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "priority",
+          "title",
+          "rationale"
+        ],
+        "title": "CurationRecommendation",
+        "type": "object"
+      },
+      "DashboardActivity": {
+        "properties": {
+          "contribution_calendar": {
+            "$ref": "#/components/schemas/ContributionCalendar"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/GitHubEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "punch_card": {
+            "items": {
+              "$ref": "#/components/schemas/PunchCardEntry"
+            },
+            "title": "Punch Card",
+            "type": "array"
+          },
+          "recent_commits": {
+            "items": {
+              "$ref": "#/components/schemas/RecentCommit"
+            },
+            "title": "Recent Commits",
+            "type": "array"
+          },
+          "weekly_commits": {
+            "items": {
+              "$ref": "#/components/schemas/CommitWeek"
+            },
+            "title": "Weekly Commits",
+            "type": "array"
+          }
+        },
+        "title": "DashboardActivity",
+        "type": "object"
+      },
+      "DashboardStats": {
+        "properties": {
+          "health_distribution": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Health Distribution",
+            "type": "object"
+          },
+          "languages": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Languages",
+            "type": "object"
+          },
+          "private_count": {
+            "default": 0,
+            "title": "Private Count",
+            "type": "integer"
+          },
+          "public_count": {
+            "default": 0,
+            "title": "Public Count",
+            "type": "integer"
+          },
+          "total_repositories": {
+            "default": 0,
+            "title": "Total Repositories",
+            "type": "integer"
+          },
+          "total_stars": {
+            "default": 0,
+            "title": "Total Stars",
+            "type": "integer"
+          }
+        },
+        "title": "DashboardStats",
+        "type": "object"
+      },
+      "DimensionScore": {
+        "properties": {
+          "contributions": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreContribution"
+            },
+            "title": "Contributions",
+            "type": "array"
+          },
+          "dimension": {
+            "$ref": "#/components/schemas/HealthDimension"
+          },
+          "score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SignalStatus"
+          }
+        },
+        "required": [
+          "dimension",
+          "score",
+          "status",
+          "contributions"
+        ],
+        "title": "DimensionScore",
+        "type": "object"
+      },
+      "DiscoveredRepository": {
+        "properties": {
+          "default_branch": {
+            "title": "Default Branch",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "github_id": {
+            "title": "Github Id",
+            "type": "integer"
+          },
+          "html_url": {
+            "title": "Html Url",
+            "type": "string"
+          },
+          "monitored": {
+            "default": false,
+            "title": "Monitored",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "owner": {
+            "title": "Owner",
+            "type": "string"
+          },
+          "primary_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Language"
+          },
+          "private": {
+            "title": "Private",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "github_id",
+          "owner",
+          "name",
+          "default_branch",
+          "private",
+          "html_url"
+        ],
+        "title": "DiscoveredRepository",
+        "type": "object"
+      },
+      "EvidenceRef": {
+        "properties": {
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "source",
+          "summary",
+          "observed_at"
+        ],
+        "title": "EvidenceRef",
+        "type": "object"
+      },
+      "GenerateTestsRequest": {
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "focus_module": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus Module"
+          },
+          "target_coverage": {
+            "default": 80.0,
+            "title": "Target Coverage",
+            "type": "number"
+          }
+        },
+        "title": "GenerateTestsRequest",
+        "type": "object"
+      },
+      "GitHubAccount": {
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "login": {
+            "title": "Login",
+            "type": "string"
+          },
+          "profile_url": {
+            "title": "Profile Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "login",
+          "profile_url"
+        ],
+        "title": "GitHubAccount",
+        "type": "object"
+      },
+      "GitHubEvent": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "repo": {
+            "title": "Repo",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "repo",
+          "created_at",
+          "summary"
+        ],
+        "title": "GitHubEvent",
+        "type": "object"
+      },
+      "GitHubSettingsStatus": {
+        "properties": {
+          "app_install_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Install Url"
+          },
+          "auth_mode": {
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "auto_scan_interval_minutes": {
+            "title": "Auto Scan Interval Minutes",
+            "type": "integer"
+          },
+          "auto_scan_on_startup": {
+            "title": "Auto Scan On Startup",
+            "type": "boolean"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "scan_stale_after_minutes": {
+            "title": "Scan Stale After Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "configured",
+          "auth_mode",
+          "auto_scan_on_startup",
+          "auto_scan_interval_minutes",
+          "scan_stale_after_minutes"
+        ],
+        "title": "GitHubSettingsStatus",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthDimension": {
+        "enum": [
+          "build",
+          "tests",
+          "ci",
+          "dependencies",
+          "security",
+          "deployment",
+          "documentation",
+          "maintenance"
+        ],
+        "title": "HealthDimension",
+        "type": "string"
+      },
+      "HealthReport": {
+        "properties": {
+          "coverage_percent": {
+            "default": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Coverage Percent",
+            "type": "integer"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/DimensionScore"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "overall_score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Overall Score",
+            "type": "integer"
+          },
+          "repository_status": {
+            "$ref": "#/components/schemas/RepositoryStatus"
+          },
+          "score_version": {
+            "title": "Score Version",
+            "type": "string"
+          },
+          "status_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Status Reasons",
+            "type": "array"
+          },
+          "unavailable_dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/HealthDimension"
+            },
+            "title": "Unavailable Dimensions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "score_version",
+          "overall_score",
+          "repository_status",
+          "dimensions",
+          "unavailable_dimensions"
+        ],
+        "title": "HealthReport",
+        "type": "object"
+      },
+      "HealthSignal": {
+        "properties": {
+          "dimension": {
+            "$ref": "#/components/schemas/HealthDimension"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/EvidenceRef"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SignalStatus"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "dimension",
+          "key",
+          "status",
+          "summary",
+          "evidence"
+        ],
+        "title": "HealthSignal",
+        "type": "object"
+      },
+      "JulesAuditArea": {
+        "enum": [
+          "build",
+          "coverage",
+          "ci",
+          "dependencies",
+          "security",
+          "deployment",
+          "documentation",
+          "maintenance"
+        ],
+        "title": "JulesAuditArea",
+        "type": "string"
+      },
+      "JulesAuditSession": {
+        "properties": {
+          "activity": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Activity",
+            "type": "array"
+          },
+          "audit_area": {
+            "$ref": "#/components/schemas/JulesAuditArea"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "focus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          },
+          "plan_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Status"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "pull_request_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pull Request Url"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JulesSessionStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "session_id",
+          "audit_area",
+          "title",
+          "status",
+          "created_at",
+          "prompt"
+        ],
+        "title": "JulesAuditSession",
+        "type": "object"
+      },
+      "JulesCiSession": {
+        "properties": {
+          "bottlenecks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Bottlenecks",
+            "type": "array"
+          },
+          "flakiness_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flakiness Notes",
+            "type": "array"
+          },
+          "logs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Logs",
+            "type": "array"
+          },
+          "parallelization_suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parallelization Suggestions",
+            "type": "array"
+          },
+          "plan_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Status"
+          },
+          "pull_request_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pull Request Url"
+          },
+          "session_id": {
+            "default": "",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "default": "idle",
+            "title": "Status",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "JulesCiSession",
+        "type": "object"
+      },
+      "JulesSessionStatus": {
+        "enum": [
+          "preview",
+          "queued",
+          "in_progress",
+          "completed",
+          "failed",
+          "unavailable"
+        ],
+        "title": "JulesSessionStatus",
+        "type": "string"
+      },
+      "JulesTestSession": {
+        "properties": {
+          "logs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Logs",
+            "type": "array"
+          },
+          "plan_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Status"
+          },
+          "pull_request_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pull Request Url"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "default": "idle",
+            "title": "Status",
+            "type": "string"
+          },
+          "untested_cases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Untested Cases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "JulesTestSession",
+        "type": "object"
+      },
+      "MonitoringState": {
+        "enum": [
+          "active",
+          "excluded"
+        ],
+        "title": "MonitoringState",
+        "type": "string"
+      },
+      "PunchCardEntry": {
+        "properties": {
+          "commits": {
+            "title": "Commits",
+            "type": "integer"
+          },
+          "day": {
+            "title": "Day",
+            "type": "integer"
+          },
+          "hour": {
+            "title": "Hour",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "hour",
+          "commits"
+        ],
+        "title": "PunchCardEntry",
+        "type": "object"
+      },
+      "RecentCommit": {
+        "properties": {
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "authored_at": {
+            "title": "Authored At",
+            "type": "string"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "repository": {
+            "title": "Repository",
+            "type": "string"
+          },
+          "sha": {
+            "title": "Sha",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha",
+          "message",
+          "author",
+          "authored_at",
+          "repository",
+          "url"
+        ],
+        "title": "RecentCommit",
+        "type": "object"
+      },
+      "RecommendationKind": {
+        "enum": [
+          "description",
+          "topics",
+          "readme",
+          "ci",
+          "archive_review"
+        ],
+        "title": "RecommendationKind",
+        "type": "string"
+      },
+      "RecommendationPriority": {
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "title": "RecommendationPriority",
+        "type": "string"
+      },
+      "RelevanceClassification": {
+        "enum": [
+          "active",
+          "portfolio",
+          "reference",
+          "experimental",
+          "stale",
+          "archive_candidate",
+          "insufficient_evidence"
+        ],
+        "title": "RelevanceClassification",
+        "type": "string"
+      },
+      "RepositoryStatus": {
+        "enum": [
+          "unscanned",
+          "scanning",
+          "healthy",
+          "attention",
+          "degraded",
+          "scan_failed"
+        ],
+        "title": "RepositoryStatus",
+        "type": "string"
+      },
+      "RepositorySummary": {
+        "properties": {
+          "default_branch": {
+            "default": "main",
+            "title": "Default Branch",
+            "type": "string"
+          },
+          "default_branch_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Branch Sha"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "evidence_stale": {
+            "default": false,
+            "title": "Evidence Stale",
+            "type": "boolean"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HealthReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "html_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html Url"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_commit_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Commit At"
+          },
+          "last_scan_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scan Error"
+          },
+          "last_scanned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scanned At"
+          },
+          "latest_scan_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "monitoring_state": {
+            "$ref": "#/components/schemas/MonitoringState",
+            "default": "active"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "owner": {
+            "title": "Owner",
+            "type": "string"
+          },
+          "primary_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Language"
+          },
+          "private": {
+            "default": false,
+            "title": "Private",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "owner",
+          "name"
+        ],
+        "title": "RepositorySummary",
+        "type": "object"
+      },
+      "ReproductionEvent": {
+        "properties": {
+          "level": {
+            "default": "info",
+            "title": "Level",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/ReproductionPhase"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp",
+          "phase",
+          "message"
+        ],
+        "title": "ReproductionEvent",
+        "type": "object"
+      },
+      "ReproductionPhase": {
+        "enum": [
+          "queued",
+          "fetching_logs",
+          "preparing_workspace",
+          "detecting_stack",
+          "executing_sandbox",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "title": "ReproductionPhase",
+        "type": "string"
+      },
+      "ReproductionRun": {
+        "properties": {
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command"
+          },
+          "commit_sha": {
+            "title": "Commit Sha",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "current_phase": {
+            "$ref": "#/components/schemas/ReproductionPhase"
+          },
+          "detected_stack": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected Stack"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ReproductionEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "output_logs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Logs"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ScanStatus"
+          },
+          "workflow_run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Run Id"
+          }
+        },
+        "required": [
+          "id",
+          "repository_id",
+          "commit_sha",
+          "status",
+          "current_phase",
+          "started_at"
+        ],
+        "title": "ReproductionRun",
+        "type": "object"
+      },
+      "ScanSnapshot": {
+        "properties": {
+          "base_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Sha"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HealthReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/HealthSignal"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "source_failures": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Failures",
+            "type": "array"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ScanStatus",
+            "default": "completed"
+          }
+        },
+        "required": [
+          "repository_id"
+        ],
+        "title": "ScanSnapshot",
+        "type": "object"
+      },
+      "ScanStatus": {
+        "enum": [
+          "running",
+          "completed",
+          "partial",
+          "failed"
+        ],
+        "title": "ScanStatus",
+        "type": "string"
+      },
+      "ScoreContribution": {
+        "properties": {
+          "dimension": {
+            "$ref": "#/components/schemas/HealthDimension"
+          },
+          "evidence_key": {
+            "title": "Evidence Key",
+            "type": "string"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "dimension",
+          "points",
+          "explanation",
+          "evidence_key"
+        ],
+        "title": "ScoreContribution",
+        "type": "object"
+      },
+      "SignalStatus": {
+        "enum": [
+          "pass",
+          "fail",
+          "unknown",
+          "unavailable"
+        ],
+        "title": "SignalStatus",
+        "type": "string"
+      },
+      "SyncStatus": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "discovered": {
+            "default": 0,
+            "title": "Discovered",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "failed": {
+            "default": 0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "monitored": {
+            "default": 0,
+            "title": "Monitored",
+            "type": "integer"
+          },
+          "queued": {
+            "default": 0,
+            "title": "Queued",
+            "type": "integer"
+          },
+          "running": {
+            "default": false,
+            "title": "Running",
+            "type": "boolean"
+          },
+          "scanned": {
+            "default": 0,
+            "title": "Scanned",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "title": "SyncStatus",
+        "type": "object"
+      },
+      "TriggerCiAnalysisRequest": {
+        "properties": {
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "focus": {
+            "default": "bottlenecks, flakiness, parallelization",
+            "title": "Focus",
+            "type": "string"
+          }
+        },
+        "title": "TriggerCiAnalysisRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "OSS Maintainer API",
+    "version": "0.4.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/ci-audit/jules": {
+      "post": {
+        "operationId": "trigger_general_ci_jules_api_v1_ci_audit_jules_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriggerCiAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JulesCiSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger General Ci Jules",
+        "tags": [
+          "ci-audit"
+        ]
+      }
+    },
+    "/api/v1/ci-audit/lint": {
+      "post": {
+        "operationId": "trigger_general_ci_lint_api_v1_ci_audit_lint_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiAuditSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Trigger General Ci Lint",
+        "tags": [
+          "ci-audit"
+        ]
+      }
+    },
+    "/api/v1/ci-audit/summary": {
+      "get": {
+        "operationId": "get_general_ci_audit_api_v1_ci_audit_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiAuditSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get General Ci Audit",
+        "tags": [
+          "ci-audit"
+        ]
+      },
+      "post": {
+        "operationId": "get_general_ci_audit_api_v1_ci_audit_summary_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiAuditSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get General Ci Audit",
+        "tags": [
+          "ci-audit"
+        ]
+      }
+    },
+    "/api/v1/coverage/generate-tests": {
+      "post": {
+        "operationId": "generate_tests_api_v1_coverage_generate_tests_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateTestsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JulesTestSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Tests",
+        "tags": [
+          "coverage"
+        ]
+      }
+    },
+    "/api/v1/coverage/stream": {
+      "get": {
+        "operationId": "stream_coverage_api_v1_coverage_stream_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stream Coverage",
+        "tags": [
+          "coverage"
+        ]
+      }
+    },
+    "/api/v1/coverage/summary": {
+      "get": {
+        "operationId": "get_coverage_summary_api_v1_coverage_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Coverage Summary",
+        "tags": [
+          "coverage"
+        ]
+      }
+    },
+    "/api/v1/dashboard/activity": {
+      "get": {
+        "operationId": "dashboard_activity_api_v1_dashboard_activity_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardActivity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Dashboard Activity",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/dashboard/refresh": {
+      "post": {
+        "operationId": "refresh_dashboard_api_v1_dashboard_refresh_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardActivity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Refresh Dashboard",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/dashboard/stats": {
+      "get": {
+        "operationId": "dashboard_stats_api_v1_dashboard_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Dashboard Stats",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/github/account": {
+      "get": {
+        "operationId": "github_account_api_v1_github_account_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GitHubAccount"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Github Account",
+        "tags": [
+          "github"
+        ]
+      }
+    },
+    "/api/v1/github/repositories": {
+      "get": {
+        "operationId": "discover_repositories_api_v1_github_repositories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoveredRepository"
+                  },
+                  "title": "Response Discover Repositories Api V1 Github Repositories Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Discover Repositories",
+        "tags": [
+          "github"
+        ]
+      }
+    },
+    "/api/v1/jules/sessions": {
+      "get": {
+        "description": "List sessions prepared through this API process, newest first.",
+        "operationId": "list_jules_sessions_api_v1_jules_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JulesAuditSession"
+                  },
+                  "title": "Response List Jules Sessions Api V1 Jules Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Jules Sessions",
+        "tags": [
+          "jules"
+        ]
+      },
+      "post": {
+        "description": "Prepare a review by default; a live request must set ``dry_run`` to false.",
+        "operationId": "create_jules_session_api_v1_jules_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJulesSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JulesAuditSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Jules Session",
+        "tags": [
+          "jules"
+        ]
+      }
+    },
+    "/api/v1/repositories": {
+      "get": {
+        "operationId": "list_repositories_api_v1_repositories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RepositorySummary"
+                  },
+                  "title": "Response List Repositories Api V1 Repositories Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Repositories",
+        "tags": [
+          "repositories"
+        ]
+      },
+      "post": {
+        "operationId": "connect_repository_api_v1_repositories_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectRepositoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositorySummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Connect Repository",
+        "tags": [
+          "repositories"
+        ]
+      }
+    },
+    "/api/v1/repositories/{repository_id}": {
+      "delete": {
+        "operationId": "exclude_repository_api_v1_repositories__repository_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exclude Repository",
+        "tags": [
+          "repositories"
+        ]
+      },
+      "get": {
+        "operationId": "get_repository_api_v1_repositories__repository_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositorySummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Repository",
+        "tags": [
+          "repositories"
+        ]
+      }
+    },
+    "/api/v1/repositories/{repository_id}/activity": {
+      "get": {
+        "operationId": "repository_activity_api_v1_repositories__repository_id__activity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Repository Activity Api V1 Repositories  Repository Id  Activity Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Repository Activity",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/repositories/{repository_id}/assessments": {
+      "get": {
+        "operationId": "assessment_history_api_v1_repositories__repository_id__assessments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CurationAssessment"
+                  },
+                  "title": "Response Assessment History Api V1 Repositories  Repository Id  Assessments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assessment History",
+        "tags": [
+          "curation"
+        ]
+      },
+      "post": {
+        "operationId": "assess_repository_api_v1_repositories__repository_id__assessments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurationAssessment"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assess Repository",
+        "tags": [
+          "curation"
+        ]
+      }
+    },
+    "/api/v1/repositories/{repository_id}/ci-audit": {
+      "get": {
+        "operationId": "get_repository_ci_audit_api_v1_repositories__repository_id__ci_audit_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiAuditSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Repository Ci Audit",
+        "tags": [
+          "ci-audit"
+        ]
+      }
+    },
+    "/api/v1/repositories/{repository_id}/ci-audit/lint": {
+      "post": {
+        "operationId": "trigger_ci_lint_api_v1_repositories__repository_id__ci_audit_lint_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiAuditSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Ci Lint",
+        "tags": [
+          "ci-audit"
+        ]
+      }
+    },
+    "/api/v1/repositories/{repository_id}/coverage": {
+      "get": {
+        "operationId": "get_repository_coverage_api_v1_repositories__repository_id__coverage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Repository Coverage",
+        "tags": [
+          "coverage"
+        ]
+      }
+    },
+    "/api/v1/repositories/{repository_id}/reproductions": {
+      "get": {
+        "operationId": "list_reproductions_api_v1_repositories__repository_id__reproductions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReproductionRun"
+                  },
+                  "title": "Response List Reproductions Api V1 Repositories  Repository Id  Reproductions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Reproductions",
+        "tags": [
+          "reproduction"
+        ]
+      },
+      "post": {
+        "operationId": "create_reproduction_api_v1_repositories__repository_id__reproductions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReproductionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReproductionRun"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Reproduction",
+        "tags": [
+          "reproduction"
+        ]
+      }
+    },
+    "/api/v1/repositories/{repository_id}/scans": {
+      "get": {
+        "operationId": "scan_history_api_v1_repositories__repository_id__scans_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScanSnapshot"
+                  },
+                  "title": "Response Scan History Api V1 Repositories  Repository Id  Scans Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scan History",
+        "tags": [
+          "scans"
+        ]
+      },
+      "post": {
+        "operationId": "scan_repository_api_v1_repositories__repository_id__scans_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scan Repository",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/v1/repositories/{repository_id}/scans/{scan_id}": {
+      "get": {
+        "operationId": "get_scan_api_v1_repositories__repository_id__scans__scan_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Scan",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/api/v1/reproductions/{reproduction_id}": {
+      "get": {
+        "operationId": "get_reproduction_api_v1_reproductions__reproduction_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reproduction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reproduction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReproductionRun"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Reproduction",
+        "tags": [
+          "reproduction"
+        ]
+      }
+    },
+    "/api/v1/reproductions/{reproduction_id}/cancel": {
+      "post": {
+        "operationId": "cancel_reproduction_api_v1_reproductions__reproduction_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reproduction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reproduction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReproductionRun"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Reproduction",
+        "tags": [
+          "reproduction"
+        ]
+      }
+    },
+    "/api/v1/reproductions/{reproduction_id}/stream": {
+      "get": {
+        "operationId": "stream_reproduction_api_v1_reproductions__reproduction_id__stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reproduction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reproduction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Reproduction",
+        "tags": [
+          "reproduction"
+        ]
+      }
+    },
+    "/api/v1/settings/ai": {
+      "get": {
+        "operationId": "ai_settings_api_v1_settings_ai_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AISettingsStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ai Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/github": {
+      "get": {
+        "operationId": "github_settings_api_v1_settings_github_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GitHubSettingsStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Github Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/sync": {
+      "get": {
+        "operationId": "sync_status_api_v1_sync_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sync Status",
+        "tags": [
+          "scans"
+        ]
+      },
+      "post": {
+        "operationId": "sync_all_repositories_api_v1_sync_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Force",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync All Repositories",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "healthcheck_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Healthcheck Healthz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Healthcheck",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "readiness_readyz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Readiness Readyz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readiness",
+        "tags": [
+          "system"
+        ]
+      }
+    }
+  }
+}

@@ -19,10 +19,13 @@ interface CustomTooltipProps extends TooltipProps<number, number> {
 }
 const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
-    const data = payload[0].payload;
+    const item = payload[0];
+    if (!item) return null;
+    const data = item.payload;
+    const dayLabel = days[data.day] ?? "";
     return (
       <div style={{ background: "var(--ink)", color: "white", padding: "8px 12px", font: "10px DM Mono", textTransform: "uppercase" }}>
-        {days[data.day]} {formatHour(data.hour)}: {data.commits} commit{data.commits !== 1 ? "s" : ""}
+        {dayLabel} {formatHour(data.hour)}: {data.commits} commit{data.commits !== 1 ? "s" : ""}
       </div>
     );
   }
@@ -61,7 +64,7 @@ export function PunchCard({ data }: { data: PunchCardEntry[] }) {
                 dataKey="day" 
                 type="number" 
                 domain={[0, 6]} 
-                tickFormatter={(tick) => days[tick]} 
+                tickFormatter={(tick) => days[tick] ?? ""}
                 ticks={[0, 1, 2, 3, 4, 5, 6]}
                 axisLine={false}
                 tickLine={false}

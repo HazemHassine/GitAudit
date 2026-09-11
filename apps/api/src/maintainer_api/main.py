@@ -15,8 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from .activity import ActivityService
+from .ci_audit import CiAuditService
 from .config import get_settings
 from .coordinator import RepositorySyncCoordinator
+from .coverage import CoverageService
 from .curation import (
     PROMPT_VERSION,
     AssessmentInProgressError,
@@ -35,21 +37,30 @@ from .database import (
 )
 from .domain import (
     AISettingsStatus,
+    CiAuditSummary,
     ConnectRepositoryRequest,
+    CoverageSummary,
+    CreateJulesSessionRequest,
     CreateReproductionRequest,
     CurationAssessment,
     DashboardActivity,
     DashboardStats,
     DiscoveredRepository,
+    GenerateTestsRequest,
     GitHubAccount,
     GitHubSettingsStatus,
+    JulesAuditSession,
+    JulesCiSession,
+    JulesTestSession,
     MonitoringState,
     RepositorySummary,
     ReproductionRun,
     ScanSnapshot,
     SyncStatus,
+    TriggerCiAnalysisRequest,
 )
 from .github import GitHubConfigurationError, GitHubError, HttpGitHubReader
+from .jules import JulesAuditService
 from .observability import HTTP_DURATION, HTTP_REQUESTS, configure_logging
 from .reproduction import ReproductionService
 from .service import (
@@ -75,6 +86,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     curation_agent = build_curation_agent(settings) if settings.openai_configured else None
     curation_service = CurationService(github_reader, settings.openai_model, curation_agent)
     reproduction_service = ReproductionService(github_reader)
+    jules_service = JulesAuditService(settings)
+    coverage_service = CoverageService(settings, jules_service)
+    ci_audit_service = CiAuditService(jules_service)
     async with session_factory() as recovery_session:
         recovered = await repository_service.recover_interrupted_scans(recovery_session)
         if recovered:
@@ -93,6 +107,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.activity_service = activity_service
     app.state.curation_service = curation_service
     app.state.reproduction_service = reproduction_service
+    app.state.coverage_service = coverage_service
+    app.state.ci_audit_service = ci_audit_service
+    app.state.jules_service = jules_service
     app.state.sync_coordinator = coordinator
     coordinator.start()
     try:
@@ -542,3 +559,170 @@ async def stream_reproduction(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return StreamingResponse(service.stream_reproduction(reproduction_id), media_type="text/event-stream")
+
+
+def get_coverage_service(request: Request) -> CoverageService:
+    service = getattr(request.app.state, "coverage_service", None)
+    if service is None:
+        service = CoverageService(settings, get_jules_service(request))
+        request.app.state.coverage_service = service
+    return service
+
+
+CoverageDependency = Annotated[CoverageService, Depends(get_coverage_service)]
+
+
+@app.get(
+    "/api/v1/coverage/summary",
+    response_model=CoverageSummary,
+    tags=["coverage"],
+)
+async def get_coverage_summary(
+    service: CoverageDependency,
+) -> CoverageSummary:
+    return service.get_coverage_summary()
+
+
+@app.post(
+    "/api/v1/coverage/generate-tests",
+    response_model=JulesTestSession,
+    tags=["coverage"],
+)
+async def generate_tests(
+    payload: GenerateTestsRequest,
+    service: CoverageDependency,
+) -> JulesTestSession:
+    return await service.trigger_jules_test_generation(payload)
+
+
+@app.get(
+    "/api/v1/coverage/stream",
+    tags=["coverage"],
+)
+async def stream_coverage(
+    service: CoverageDependency,
+):
+    return StreamingResponse(service.stream_events(), media_type="text/event-stream")
+
+
+@app.get(
+    "/api/v1/repositories/{repository_id}/coverage",
+    response_model=CoverageSummary,
+    tags=["coverage"],
+)
+async def get_repository_coverage(
+    repository_id: UUID,
+    session: SessionDependency,
+    service: CoverageDependency,
+) -> CoverageSummary:
+    repository = await find_repository(session, repository_id)
+    return service.get_repository_coverage_summary(repository)
+
+
+def get_ci_audit_service(request: Request) -> CiAuditService:
+    service = getattr(request.app.state, "ci_audit_service", None)
+    if service is None:
+        service = CiAuditService(get_jules_service(request))
+        request.app.state.ci_audit_service = service
+    return service
+
+
+CiAuditDependency = Annotated[CiAuditService, Depends(get_ci_audit_service)]
+
+
+def get_jules_service(request: Request) -> JulesAuditService:
+    service = getattr(request.app.state, "jules_service", None)
+    if service is None:
+        service = JulesAuditService(settings)
+        request.app.state.jules_service = service
+    return service
+
+
+JulesDependency = Annotated[JulesAuditService, Depends(get_jules_service)]
+
+
+@app.get(
+    "/api/v1/jules/sessions",
+    response_model=list[JulesAuditSession],
+    tags=["jules"],
+)
+async def list_jules_sessions(service: JulesDependency) -> list[JulesAuditSession]:
+    """List sessions prepared through this API process, newest first."""
+    return service.list_sessions()
+
+
+@app.post(
+    "/api/v1/jules/sessions",
+    response_model=JulesAuditSession,
+    status_code=status.HTTP_201_CREATED,
+    tags=["jules"],
+)
+async def create_jules_session(
+    payload: CreateJulesSessionRequest,
+    service: JulesDependency,
+) -> JulesAuditSession:
+    """Prepare a review by default; a live request must set ``dry_run`` to false."""
+    return await service.create_session(payload)
+
+
+@app.get(
+    "/api/v1/repositories/{repository_id}/ci-audit",
+    response_model=CiAuditSummary,
+    tags=["ci-audit"],
+)
+async def get_repository_ci_audit(
+    repository_id: UUID,
+    session: SessionDependency,
+    service: CiAuditDependency,
+) -> CiAuditSummary:
+    repo = await find_repository(session, repository_id)
+    return await service.get_ci_audit_for_repository(repo)
+
+
+@app.get(
+    "/api/v1/ci-audit/summary",
+    response_model=CiAuditSummary,
+    tags=["ci-audit"],
+)
+@app.post(
+    "/api/v1/ci-audit/summary",
+    response_model=CiAuditSummary,
+    tags=["ci-audit"],
+)
+async def get_general_ci_audit(
+    service: CiAuditDependency,
+) -> CiAuditSummary:
+    return await service.get_local_ci_audit()
+
+
+@app.post(
+    "/api/v1/ci-audit/lint",
+    response_model=CiAuditSummary,
+    tags=["ci-audit"],
+)
+async def trigger_general_ci_lint(
+    service: CiAuditDependency,
+) -> CiAuditSummary:
+    return await service.get_local_ci_audit()
+
+
+@app.post("/api/v1/ci-audit/jules", response_model=JulesCiSession, tags=["ci-audit"])
+async def trigger_general_ci_jules(
+    payload: TriggerCiAnalysisRequest,
+    service: CiAuditDependency,
+) -> JulesCiSession:
+    return await service.trigger_jules_analysis(payload)
+
+
+@app.post(
+    "/api/v1/repositories/{repository_id}/ci-audit/lint",
+    response_model=CiAuditSummary,
+    tags=["ci-audit"],
+)
+async def trigger_ci_lint(
+    repository_id: UUID,
+    session: SessionDependency,
+    service: CiAuditDependency,
+) -> CiAuditSummary:
+    repo = await find_repository(session, repository_id)
+    return await service.get_ci_audit_for_repository(repo)

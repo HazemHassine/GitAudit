@@ -12,4 +12,9 @@ playwright-report/
 test-results/
 dist/
 coverage/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 .DS_Store
+docs/ARCHITECTURE.local.md

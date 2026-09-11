@@ -1,0 +1,37 @@
+name: Documentation
+
+on:
+  push:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "apps/api/src/**"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "apps/api/src/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --root-dir . --no-progress './README.md' './docs/**/*.md'
+
+  openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e 'apps/api[dev]'
+      - run: PYTHONPATH=apps/api/src python scripts/export_openapi.py --check

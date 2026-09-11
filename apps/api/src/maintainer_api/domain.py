@@ -333,3 +333,118 @@ class CreateReproductionRequest(BaseModel):
     workflow_run_id: int | None = None
     job_id: int | None = None
     custom_command: str | None = None
+
+
+class CoverageModule(BaseModel):
+    name: str
+    statements: int
+    missed: int
+    coverage_percent: float
+    uncovered_lines: list[str] = Field(default_factory=list)
+
+
+class JulesTestSession(BaseModel):
+    session_id: str
+    status: str = "idle"  # idle, queued, running, completed, failed, preview
+    plan_status: str | None = None
+    untested_cases: list[str] = Field(default_factory=list)
+    pull_request_url: str | None = None
+    logs: list[str] = Field(default_factory=list)
+
+
+class CoverageSummary(BaseModel):
+    status: str = "available"  # available, unavailable, error
+    scope: str = "local"  # local, remote
+    message: str | None = None
+    coverage_percent: float | None = None
+    threshold_percent: float = 80.0
+    passed_threshold: bool | None = None
+    total_statements: int = 0
+    total_missed: int = 0
+    tests_passed: int | None = None
+    total_tests: int | None = None
+    execution_time_seconds: float | None = None
+    modules: list[CoverageModule] = Field(default_factory=list)
+    jules_session: JulesTestSession | None = None
+
+
+class GenerateTestsRequest(BaseModel):
+    focus_module: str | None = None
+    target_coverage: float = 80.0
+    dry_run: bool = False
+
+
+class JulesCiSession(BaseModel):
+    session_id: str = ""
+    status: str = "idle"  # idle, queued, in_progress, completed, failed, preview
+    plan_status: str | None = None
+    bottlenecks: list[str] = Field(default_factory=list)
+    flakiness_notes: list[str] = Field(default_factory=list)
+    parallelization_suggestions: list[str] = Field(default_factory=list)
+    pull_request_url: str | None = None
+    url: str | None = None
+    logs: list[str] = Field(default_factory=list)
+
+
+class CiWorkflowSummary(BaseModel):
+    name: str
+    path: str
+    lint_status: str = "valid"  # valid, invalid, unavailable, error
+    lint_errors: list[str] = Field(default_factory=list)
+
+
+class CiAuditSummary(BaseModel):
+    actionlint_passed: bool | None = None
+    total_workflows: int = 0
+    workflows: list[CiWorkflowSummary] = Field(default_factory=list)
+    actionlint_output: str = ""
+    is_checking: bool = False
+    last_run_status: str = "unavailable"  # success, failed, unavailable, error, attention
+    jules_session: JulesCiSession | None = None
+    scope: str = "local"  # local, remote
+    message: str | None = None
+
+
+class TriggerCiAnalysisRequest(BaseModel):
+    focus: str = "bottlenecks, flakiness, parallelization"
+    dry_run: bool = True
+
+
+class JulesAuditArea(StrEnum):
+    BUILD = "build"
+    COVERAGE = "coverage"
+    CI = "ci"
+    DEPENDENCIES = "dependencies"
+    SECURITY = "security"
+    DEPLOYMENT = "deployment"
+    DOCUMENTATION = "documentation"
+    MAINTENANCE = "maintenance"
+
+
+class JulesSessionStatus(StrEnum):
+    PREVIEW = "preview"
+    QUEUED = "queued"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    UNAVAILABLE = "unavailable"
+
+
+class CreateJulesSessionRequest(BaseModel):
+    audit_area: JulesAuditArea
+    focus: str | None = Field(default=None, max_length=500)
+    dry_run: bool = True
+
+
+class JulesAuditSession(BaseModel):
+    session_id: str
+    audit_area: JulesAuditArea
+    title: str
+    status: JulesSessionStatus
+    created_at: datetime
+    focus: str | None = None
+    plan_status: str | None = None
+    activity: list[str] = Field(default_factory=list)
+    prompt: str
+    pull_request_url: str | None = None
+    url: str | None = None

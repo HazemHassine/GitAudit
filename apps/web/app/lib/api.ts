@@ -303,3 +303,99 @@ export function repositoryDisplayStatus(repository: Repository): RepositoryStatu
 export function reproductionSnapshot(run: ReproductionRun): ReproductionRun {
   return run;
 }
+
+export type CoverageModule = {
+  name: string;
+  statements: number;
+  missed: number;
+  coverage_percent: number;
+  uncovered_lines: string[];
+};
+
+export type JulesCoverageSession = {
+  session_id: string;
+  status: "idle" | "queued" | "running" | "completed" | "failed" | "preview";
+  plan_status?: string | null;
+  untested_cases: string[];
+  pull_request_url?: string | null;
+  logs?: string[];
+};
+
+export type CoverageSummary = {
+  status?: "available" | "unavailable" | "error";
+  scope?: "local" | "remote";
+  message?: string | null;
+  coverage_percent: number | null;
+  threshold_percent: number;
+  passed_threshold: boolean | null;
+  total_statements: number;
+  total_missed: number;
+  tests_passed: number | null;
+  total_tests: number | null;
+  execution_time_seconds: number | null;
+  modules: CoverageModule[];
+  jules_session?: JulesCoverageSession | null;
+};
+
+export type JulesAuditArea =
+  | "build"
+  | "coverage"
+  | "ci"
+  | "dependencies"
+  | "security"
+  | "deployment"
+  | "documentation"
+  | "maintenance";
+
+export type JulesAuditStatus =
+  | "preview"
+  | "queued"
+  | "in_progress"
+  | "completed"
+  | "failed"
+  | "unavailable";
+
+export type JulesAuditSession = {
+  session_id: string;
+  audit_area: JulesAuditArea;
+  title: string;
+  status: JulesAuditStatus;
+  created_at: string;
+  focus: string | null;
+  plan_status: string | null;
+  activity: string[];
+  prompt: string;
+  pull_request_url: string | null;
+  url: string | null;
+};
+
+export type CiWorkflowSummary = {
+  name: string;
+  path: string;
+  lint_status: "valid" | "invalid" | "unavailable" | "error";
+  lint_errors: string[];
+};
+
+export type JulesCiSession = {
+  session_id: string;
+  status: "idle" | "queued" | "in_progress" | "completed" | "failed" | "preview";
+  plan_status?: string | null;
+  bottlenecks: string[];
+  flakiness_notes: string[];
+  parallelization_suggestions: string[];
+  pull_request_url?: string | null;
+  url?: string | null;
+  logs: string[];
+};
+
+export type CiAuditSummary = {
+  actionlint_passed: boolean | null;
+  total_workflows: number;
+  workflows: CiWorkflowSummary[];
+  actionlint_output: string;
+  is_checking: boolean;
+  last_run_status: string;
+  jules_session?: JulesCiSession | null;
+  scope?: "local" | "remote";
+  message?: string | null;
+};
