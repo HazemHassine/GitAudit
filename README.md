@@ -9,8 +9,9 @@ repositories visible to a configured GitHub App or fine-grained token, persists 
 and uses a bounded LangGraph workflow to propose improvements to profile metadata and
 documentation.
 
-Milestone 2 does not execute repository code, fix source code, or make GitHub changes. AI output is
-stored as a reviewable proposal, never treated as observed evidence or applied automatically.
+Profile-curation output is stored as a reviewable proposal, never treated as observed evidence or
+applied automatically. The consolidated audit-and-repair workflow described below is planned;
+it has not been implemented yet.
 
 ## What it does now
 
@@ -25,9 +26,54 @@ stored as a reviewable proposal, never treated as observed evidence or applied a
 - Classifies repository positioning while preserving uncertainty.
 - Proposes missing descriptions, topics, README improvements, and CI follow-up.
 - Persists every AI assessment with its model, prompt version, commit SHA, evidence, and status.
+- Provides local coverage and CI audit evidence, with unavailable results for remote repositories
+  when local evidence does not apply.
+- Prepares Jules review previews from the dashboard; current Jules history is process-local.
+- Includes a legacy reproduction runner and explicit live Jules launch paths. These do not yet
+  provide the durable execution, shared quota, or one-PR guarantees in the planned workflow.
 
 Explicitly stopping monitoring retains history and prevents later automatic inventory runs from
 re-enabling that repository. Reconnecting it makes it eligible for automatic scans again.
+
+## Planned audit workflow
+
+A dedicated **Audits** page will let you select repositories, remember that selection, and start
+one run with **Run checks**. Each repository will receive a report tied to its default-branch
+commit. Healthy repositories will consume no Jules session and produce no empty PR; deeper AI
+review will be optional.
+
+For actionable findings, GitAudit will prepare one Jules repair plan per repository, require your
+approval of the actual plan version, independently validate the resulting patch, and create or
+update one tracked PR titled **`GitAudit: Repository check — <repository>`**. You will review and
+merge it. Repairs will focus on evidenced failures, vulnerabilities, relevant tests, and small
+documentation or configuration corrections.
+
+The implementation is organized into five milestones:
+
+1. **Durable, safe execution:** PostgreSQL-backed jobs, renewable worker leases, durable events,
+   single-owner authentication, pause/resume/stop controls, and replacement of the legacy runner
+   with disposable Docker execution without host fallback.
+2. **Real repository audits:** Python and JavaScript/TypeScript adapters, repository-specific
+   checks, evidence and caching, and live reports at `/audits` and `/audits/runs/{id}`. Missing,
+   unsupported, and unavailable checks will remain visible.
+3. **Jules orchestration:** source discovery, persisted plans and activities, version-specific
+   approval, and a central limit of 80 new sessions per rolling 24 hours. Initial concurrency
+   will be two local check jobs and three active Jules planning/execution slots.
+4. **Consolidated repairs:** patch source/base verification, independent validation, at most two
+   correction rounds in the same session, and one tracked open PR per repository. Subsequent
+   approved runs will update that PR, with human changes requiring reconciliation.
+5. **Finish and prove:** accessible progress views, reconnect/replay, restart recovery, operational
+   documentation, and offline Python, Node, and monorepo scenarios with mocked providers.
+
+FastAPI, Next.js, and PostgreSQL will remain the stack, with a separate worker and local Docker
+Compose deployment. Checks will use each repository's own rules. Dependency installation will
+have controlled network access; test/build containers will have networking disabled by default
+and receive neither provider credentials nor the Docker socket.
+
+Development verification will use offline provider fixtures. A separately authorized pilot on
+one disposable repository, capped at two live Jules sessions, is required before claiming the
+full repair workflow works. It must demonstrate approval, patch retrieval, independent
+validation, PR creation, and an update to that same PR.
 
 ## Layout
 
@@ -116,9 +162,14 @@ make test-e2e   # Playwright browser happy path
 The API exposes `/healthz` for liveness, `/readyz` for database readiness, and `/metrics` for
 Prometheus-compatible request and scan metrics. Logs are structured JSON and carry request IDs.
 
-## Milestone 2 safety boundary
+## Current execution boundaries
 
 Repository descriptions, topics, README text, and scan output are treated as untrusted input. The
 LangGraph workflow runs a deterministic pre-check before requesting a strict structured assessment.
 There are intentionally no API routes for approving or applying a proposal, changing metadata,
 editing a README, adding CI, or archiving a repository yet.
+
+These profile-curation boundaries do not describe the legacy reproduction runner or live Jules
+launch paths. The current live Jules adapter enables provider PR creation, and its session history
+is not durable. The planned worker, centralized budget, and GitAudit-owned publication lifecycle
+must replace those paths before the new audit workflow can offer its stated guarantees.
