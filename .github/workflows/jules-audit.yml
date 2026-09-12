@@ -35,29 +35,33 @@ permissions:
 
 jobs:
   prepare-review:
-    name: Jules ${{ inputs.audit_area }} review
+    name: Review preview
     runs-on: ubuntu-latest
-    if: github.repository == 'HazemHassine/GitAudit'
+    if: inputs.execution == 'preview'
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Prepare review preview
-        if: inputs.execution == 'preview'
-        run: >-
-          python3 scripts/jules_audit.py
-          --area "${{ inputs.audit_area }}"
-          --focus "${{ inputs.focus }}"
-
-      - name: Submit plan-review session
-        if: inputs.execution == 'live'
         env:
-          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          AUDIT_AREA: ${{ inputs.audit_area }}
+          AUDIT_FOCUS: ${{ inputs.focus }}
+        run: python3 scripts/jules_audit.py --area "$AUDIT_AREA" --focus "$AUDIT_FOCUS"
+
+  queue-live:
+    name: Queue through local GitAudit backend
+    if: inputs.execution == 'live'
+    runs-on: [self-hosted, gitaudit]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Queue audit with backend quota enforcement
+        env:
+          GITAUDIT_OWNER_PASSWORD: ${{ secrets.GITAUDIT_OWNER_PASSWORD }}
+          GITAUDIT_API_URL: http://127.0.0.1:8001
+          REPOSITORY_ID: ${{ vars.GITAUDIT_REPOSITORY_ID }}
+          REQUEST_KEY: workflow-${{ github.run_id }}
         run: >-
-          python3 scripts/jules_audit.py
-          --area "${{ inputs.audit_area }}"
-          --focus "${{ inputs.focus }}"
-          --live
+          python3 scripts/jules_audit.py --live
+          --repository-id "$REPOSITORY_ID"
+          --idempotency-key "$REQUEST_KEY"

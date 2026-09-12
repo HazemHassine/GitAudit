@@ -55,3 +55,12 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["uvicorn", "maintainer_api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+
+# Trusted orchestration worker alone receives access to the Docker daemon.
+FROM runner AS worker
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends docker.io && \
+    rm -rf /var/lib/apt/lists/*
+USER appuser
+ENTRYPOINT []
+CMD ["python", "-m", "maintainer_api.audit_worker"]

@@ -48,9 +48,6 @@ addopts = "-p pytest_asyncio.plugin -p pytest_cov --cov=maintainer_api --cov-rep
 source = ["maintainer_api"]
 omit = [
   "src/maintainer_api/__init__.py",
-  # Live Jules interaction is deliberately verified separately from the local coverage gate.
-  "src/maintainer_api/jules.py",
-  "src/maintainer_api/jules_prompts.py",
 ]
 
 [tool.coverage.report]

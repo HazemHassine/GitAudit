@@ -190,6 +190,7 @@ class CiAuditService:
                 audit_area=JulesAuditArea.CI,
                 focus=request.focus,
                 dry_run=request.dry_run,
+                idempotency_key=request.idempotency_key,
             )
         )
         return JulesCiSession(

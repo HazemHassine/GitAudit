@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: maintainer
       POSTGRES_PASSWORD: maintainer
     ports:
-      - "${POSTGRES_HOST_PORT:-5434}:5432"
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5434}:5432"
     volumes:
       - maintainer-db:/var/lib/postgresql/data
     healthcheck:
@@ -19,6 +19,7 @@ services:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
+      target: runner
     env_file:
       - path: .env
         required: false
@@ -26,7 +27,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://maintainer:maintainer@db:5432/maintainer
       CORS_ORIGINS: http://localhost:3000
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     depends_on:
       db:
         condition: service_healthy
@@ -37,6 +38,58 @@ services:
       retries: 10
       start_period: 10s
 
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+      target: worker
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://maintainer:maintainer@db:5432/maintainer
+      AUDIT_IMAGE: gitaudit-checks:1
+      AUDIT_INSTALL_NETWORK: gitaudit-install
+      AUDIT_INSTALL_PROXY: http://install-proxy:3128
+    group_add:
+      - "${DOCKER_GID:-0}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      api:
+        condition: service_healthy
+      install-proxy:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-m", "maintainer_api.worker_health"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+
+  checks:
+    image: gitaudit-checks:1
+    build:
+      context: ./apps/worker
+      dockerfile: checks.Dockerfile
+    profiles: ["build-tools"]
+    network_mode: none
+
+  install-proxy:
+    image: python:3.12-slim
+    command: ["python", "/app/install_proxy.py"]
+    volumes:
+      - ./apps/worker/install_proxy.py:/app/install_proxy.py:ro
+    networks:
+      default: {}
+      install:
+        aliases: ["install-proxy"]
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    user: "65534:65534"
+    restart: unless-stopped
+
   web:
     build:
       context: ./apps/web
@@ -44,7 +97,7 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=http://localhost:8001
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       api:
         condition: service_healthy
@@ -57,3 +110,8 @@ services:
 
 volumes:
   maintainer-db:
+
+networks:
+  install:
+    name: gitaudit-install
+    internal: true

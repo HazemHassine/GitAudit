@@ -3,7 +3,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
 from maintainer_api.config import Settings
@@ -145,62 +144,23 @@ def test_coverage_service_corrupted_xml(tmp_path: Path) -> None:
     assert summary.message is not None
 
 
-@pytest.mark.skip(reason="Live Jules adapter verification is explicitly deferred.")
-async def test_trigger_jules_test_generation_live_mock() -> None:
-    import os
-    service = CoverageService()
-    req = GenerateTestsRequest(focus_module="curation.py", target_coverage=85.0, dry_run=False)
+async def test_coverage_launch_delegates_to_shared_service() -> None:
+    """Legacy controls pass the idempotency key through the backend adapter."""
+    from datetime import UTC, datetime
 
-    mock_resp = unittest.mock.MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json = unittest.mock.Mock(return_value={"name": "sessions/mock-1234"})
-
-    with (
-        unittest.mock.patch.dict(os.environ, {"JULES_API_KEY": "fake-key"}),
-        unittest.mock.patch("httpx.AsyncClient.post", return_value=mock_resp),
-    ):
-        session = await service.trigger_jules_test_generation(req)
-        assert session.session_id == "sessions/mock-1234"
-        assert session.status == "running"
-        assert session.pull_request_url is None
-
-    mock_err_resp = unittest.mock.MagicMock()
-    mock_err_resp.status_code = 500
-    mock_err_resp.text = "Internal error with sensitive secret"
-
-    with (
-        unittest.mock.patch.dict(os.environ, {"JULES_API_KEY": "fake-key"}),
-        unittest.mock.patch("httpx.AsyncClient.post", return_value=mock_err_resp),
-    ):
-        session_err = await service.trigger_jules_test_generation(req)
-        assert session_err.status == "failed"
-        assert session_err.session_id == ""
-        assert session_err.pull_request_url is None
-        assert any("Error" in log for log in session_err.logs)
-        assert "sensitive secret" not in str(session_err.logs)
-
-    with (
-        unittest.mock.patch.dict(os.environ, {"JULES_API_KEY": "fake-key"}),
-        unittest.mock.patch("httpx.AsyncClient.post", side_effect=RuntimeError("internal secret")),
-    ):
-        session_exc = await service.trigger_jules_test_generation(req)
-        assert session_exc.status == "failed"
-        assert session_exc.session_id == ""
-        assert session_exc.pull_request_url is None
-        assert any("Error" in log for log in session_exc.logs)
-        assert "internal secret" not in str(session_exc.logs)
-
-    mock_empty_name_resp = unittest.mock.MagicMock()
-    mock_empty_name_resp.status_code = 200
-    mock_empty_name_resp.json = unittest.mock.Mock(return_value={})
-
-    with (
-        unittest.mock.patch.dict(os.environ, {"JULES_API_KEY": "fake-key"}),
-        unittest.mock.patch("httpx.AsyncClient.post", return_value=mock_empty_name_resp),
-    ):
-        session_no_name = await service.trigger_jules_test_generation(req)
-        assert session_no_name.status == "failed"
-        assert session_no_name.session_id == ""
+    from maintainer_api.domain import JulesAuditSession, JulesSessionStatus
+    from maintainer_api.jules import JulesAuditService
+    adapter = JulesAuditService(Settings(_env_file=None))
+    adapter.create_session = AsyncMock(return_value=JulesAuditSession(
+        session_id="audit-fixture", audit_area="coverage", title="Repair", status=JulesSessionStatus.QUEUED,
+        created_at=datetime.now(UTC), prompt="Fixture", activity=[],
+    ))
+    service = CoverageService(jules_service=adapter)
+    result = await service.trigger_jules_test_generation(GenerateTestsRequest(
+        dry_run=False, idempotency_key="fixture-idempotency",
+    ))
+    assert result.session_id == "audit-fixture"
+    assert adapter.create_session.call_args.args[0].idempotency_key == "fixture-idempotency"
 
 
 async def test_stream_events() -> None:
@@ -215,7 +175,11 @@ async def test_stream_events() -> None:
     await generator.aclose()
 
 
-async def test_api_coverage_endpoints() -> None:
+async def test_api_coverage_endpoints(monkeypatch) -> None:
+    from pydantic import SecretStr
+
+    from maintainer_api.main import settings
+    monkeypatch.setattr(settings, "owner_password", SecretStr("fixture-owner-password"))
     mock_session = AsyncMock()
     mock_session.get.return_value = None
 
@@ -224,7 +188,7 @@ async def test_api_coverage_endpoints() -> None:
 
     app.dependency_overrides[database_session] = override_database_session
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", headers={"Authorization": "Bearer fixture-owner-password"}) as client:
             # GET summary (local workspace)
             res = await client.get("/api/v1/coverage/summary")
             assert res.status_code == 200

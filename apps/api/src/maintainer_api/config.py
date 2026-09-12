@@ -30,6 +30,18 @@ class Settings(BaseSettings):
     jules_source_repository: str = "HazemHassine/GitAudit"
     jules_starting_branch: str = "main"
 
+    owner_password: SecretStr | None = Field(default=None, repr=False)
+    owner_session_secret: SecretStr | None = Field(default=None, repr=False)
+    owner_cookie_secure: bool = False
+    audit_image: str = "gitaudit-checks:1"
+    audit_install_network: str = "gitaudit-install"
+    audit_install_proxy: str = "http://install-proxy:3128"
+    audit_timeout_seconds: int = Field(default=600, ge=10, le=3600)
+    audit_daily_sessions: int = Field(default=80, ge=1, le=80)
+    audit_jules_slots: int = Field(default=3, ge=1, le=3)
+    audit_allow_workflow_edits: bool = False
+    public_web_url: str = "http://localhost:3000"
+
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

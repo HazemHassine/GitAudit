@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 import httpx
 import structlog
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
@@ -15,6 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from .activity import ActivityService
+from .audit_auth import authenticated
+from .audit_auth import router as auth_router
+from .audit_routes import router as audit_router
 from .ci_audit import CiAuditService
 from .config import get_settings
 from .coordinator import RepositorySyncCoordinator
@@ -86,7 +89,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     curation_agent = build_curation_agent(settings) if settings.openai_configured else None
     curation_service = CurationService(github_reader, settings.openai_model, curation_agent)
     reproduction_service = ReproductionService(github_reader)
-    jules_service = JulesAuditService(settings)
+    jules_service = JulesAuditService(settings, session_factory)
     coverage_service = CoverageService(settings, jules_service)
     ci_audit_service = CiAuditService(jules_service)
     async with session_factory() as recovery_session:
@@ -125,9 +128,27 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
+app.include_router(audit_router)
+
+
+@app.middleware("http")
+async def owner_access(request: Request, call_next):
+    """Protect every mutation and audit evidence endpoint with owner authentication."""
+    mutation = request.method not in ("GET", "HEAD", "OPTIONS")
+    login = request.url.path == "/api/v1/auth/login"
+    if mutation:
+        origin = request.headers.get("origin")
+        if origin and origin not in settings.allowed_origins:
+            return JSONResponse(status_code=403, content={"detail": "Untrusted request origin"})
+    protected_read = request.url.path.startswith("/api/v1/audits")
+    if (mutation and not login or protected_read) and request.method != "OPTIONS" and not authenticated(request):
+        return JSONResponse(status_code=401, content={"detail": "Owner login required"})
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -477,25 +498,19 @@ def get_reproduction_service(request: Request) -> ReproductionService:
 ReproductionDependency = Annotated[ReproductionService, Depends(get_reproduction_service)]
 
 
-@app.post(
-    "/api/v1/repositories/{repository_id}/reproductions",
-    response_model=ReproductionRun,
-    status_code=status.HTTP_201_CREATED,
-    tags=["reproduction"]
-)
+@app.post("/api/v1/repositories/{repository_id}/reproductions", status_code=202, tags=["reproduction"])
 async def create_reproduction(
-    repository_id: UUID,
-    request_data: CreateReproductionRequest,
-    session: SessionDependency,
-    service: ReproductionDependency,
-) -> ReproductionRun:
-    stmt = select(RepositoryRecord).where(RepositoryRecord.id == repository_id)
-    result = await session.execute(stmt)
-    repository = result.scalar_one_or_none()
-    if not repository:
-        raise HTTPException(status_code=404, detail="Repository not found")
-    
-    return await service.start_reproduction(session, repository, request_data)
+    repository_id: UUID, request_data: CreateReproductionRequest, session: SessionDependency,
+    idempotency_key: Annotated[str, Header(min_length=8, max_length=200)],
+) -> dict:
+    """Queue safe repository checks; historical reproduction records remain readable."""
+    from fastapi.encoders import jsonable_encoder
+
+    from .audit_service import create_batch, snapshot
+    if request_data.custom_command:
+        raise HTTPException(422, "Custom commands are replaced by manifest-driven checks in Audits")
+    batch = await create_batch(session, [repository_id], idempotency_key, force=True)
+    return jsonable_encoder(await snapshot(session, batch.id))
 
 
 @app.get(
@@ -633,7 +648,7 @@ CiAuditDependency = Annotated[CiAuditService, Depends(get_ci_audit_service)]
 def get_jules_service(request: Request) -> JulesAuditService:
     service = getattr(request.app.state, "jules_service", None)
     if service is None:
-        service = JulesAuditService(settings)
+        service = JulesAuditService(settings, getattr(request.app.state, "session_factory", None))
         request.app.state.jules_service = service
     return service
 

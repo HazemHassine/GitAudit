@@ -369,6 +369,7 @@ class CoverageSummary(BaseModel):
 
 
 class GenerateTestsRequest(BaseModel):
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=200)
     focus_module: str | None = None
     target_coverage: float = 80.0
     dry_run: bool = False
@@ -406,6 +407,7 @@ class CiAuditSummary(BaseModel):
 
 
 class TriggerCiAnalysisRequest(BaseModel):
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=200)
     focus: str = "bottlenecks, flakiness, parallelization"
     dry_run: bool = True
 
@@ -431,6 +433,7 @@ class JulesSessionStatus(StrEnum):
 
 
 class CreateJulesSessionRequest(BaseModel):
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=200)
     audit_area: JulesAuditArea
     focus: str | None = Field(default=None, max_length=500)
     dry_run: bool = True

@@ -43,6 +43,62 @@
         "title": "AssessmentStatus",
         "type": "string"
       },
+      "AuditSnapshot": {
+        "description": "Stable run link and task-count progress; no synthetic percentage.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "deep_review": {
+            "title": "Deep Review",
+            "type": "boolean"
+          },
+          "force": {
+            "title": "Force",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "repositories": {
+            "items": {
+              "$ref": "#/components/schemas/RepositoryAuditResult"
+            },
+            "title": "Repositories",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "stopped": {
+            "title": "Stopped",
+            "type": "boolean"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Summary",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "stopped",
+          "deep_review",
+          "force",
+          "status",
+          "summary",
+          "repositories"
+        ],
+        "title": "AuditSnapshot",
+        "type": "object"
+      },
       "CiAuditSummary": {
         "properties": {
           "actionlint_output": {
@@ -398,6 +454,36 @@
         "title": "CoverageSummary",
         "type": "object"
       },
+      "CreateAuditRequest": {
+        "description": "Explicit repository selection and optional review/recheck choices.",
+        "properties": {
+          "deep_review": {
+            "default": false,
+            "title": "Deep Review",
+            "type": "boolean"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "repository_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Repository Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "repository_ids"
+        ],
+        "title": "CreateAuditRequest",
+        "type": "object"
+      },
       "CreateJulesSessionRequest": {
         "properties": {
           "audit_area": {
@@ -419,6 +505,19 @@
               }
             ],
             "title": "Focus"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
           }
         },
         "required": [
@@ -929,6 +1028,19 @@
             ],
             "title": "Focus Module"
           },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
           "target_coverage": {
             "default": 80.0,
             "title": "Target Coverage",
@@ -1420,6 +1532,22 @@
         "title": "JulesTestSession",
         "type": "object"
       },
+      "LoginRequest": {
+        "description": "Owner password supplied over the local interface.",
+        "properties": {
+          "password": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
       "MonitoringState": {
         "enum": [
           "active",
@@ -1427,6 +1555,38 @@
         ],
         "title": "MonitoringState",
         "type": "string"
+      },
+      "PlanDecisionRequest": {
+        "description": "A decision about one actual plan version, never a blanket approval.",
+        "properties": {
+          "decision": {
+            "enum": [
+              "approve",
+              "reject",
+              "revise"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "feedback": {
+            "default": "",
+            "maxLength": 10000,
+            "title": "Feedback",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "decision"
+        ],
+        "title": "PlanDecisionRequest",
+        "type": "object"
       },
       "PunchCardEntry": {
         "properties": {
@@ -1532,6 +1692,188 @@
         ],
         "title": "RelevanceClassification",
         "type": "string"
+      },
+      "RepositoryAuditResult": {
+        "description": "Recorded repository result exposed to the dashboard.",
+        "properties": {
+          "approved_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Version"
+          },
+          "base_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Sha"
+          },
+          "checks": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "corrections": {
+            "title": "Corrections",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
+          },
+          "plan_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Version"
+          },
+          "pr_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pr Url"
+          },
+          "remote_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remote State"
+          },
+          "repository": {
+            "title": "Repository",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "session_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Name"
+          },
+          "session_purpose": {
+            "title": "Session Purpose",
+            "type": "string"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "validation": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Validation",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "repository_id",
+          "repository",
+          "stage",
+          "base_sha",
+          "checks",
+          "findings",
+          "validation",
+          "plan",
+          "plan_version",
+          "approved_version",
+          "session_name",
+          "session_purpose",
+          "remote_state",
+          "corrections",
+          "message",
+          "created_at",
+          "completed_at",
+          "pr_url"
+        ],
+        "title": "RepositoryAuditResult",
+        "type": "object"
       },
       "RepositoryStatus": {
         "enum": [
@@ -1990,6 +2332,25 @@
         "title": "ScoreContribution",
         "type": "object"
       },
+      "SelectionRequest": {
+        "description": "Persist the owner's repository selection across browsers.",
+        "properties": {
+          "repository_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Repository Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "repository_ids"
+        ],
+        "title": "SelectionRequest",
+        "type": "object"
+      },
       "SignalStatus": {
         "enum": [
           "pass",
@@ -2082,6 +2443,19 @@
             "default": "bottlenecks, flakiness, parallelization",
             "title": "Focus",
             "type": "string"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
           }
         },
         "title": "TriggerCiAnalysisRequest",
@@ -2135,6 +2509,651 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/audits/queue/{action}": {
+      "post": {
+        "description": "Pause new local actions while allowing remote read-only reconciliation.",
+        "operationId": "queue_control_api_v1_audits_queue__action__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "enum": [
+                "pause",
+                "resume"
+              ],
+              "title": "Action",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Queue Control Api V1 Audits Queue  Action  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Queue Control",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/repositories/{run_id}/decision": {
+      "post": {
+        "description": "Approve, reject or request revision of exactly the supplied plan version.",
+        "operationId": "plan_decision_api_v1_audits_repositories__run_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plan Decision",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/repositories/{run_id}/retry": {
+      "post": {
+        "description": "An explicit retry starts a new batch and may consume a new reserved session.",
+        "operationId": "retry_run_api_v1_audits_repositories__run_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Run",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/runs": {
+      "get": {
+        "description": "List recent durable runs with their actual recorded outcomes.",
+        "operationId": "list_runs_api_v1_audits_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditSnapshot"
+                  },
+                  "title": "Response List Runs Api V1 Audits Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "audits"
+        ]
+      },
+      "post": {
+        "description": "Create or replay a durable batch request.",
+        "operationId": "start_run_api_v1_audits_runs_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAuditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Run",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/runs/{batch_id}": {
+      "get": {
+        "description": "Restore a permanent run URL.",
+        "operationId": "get_run_api_v1_audits_runs__batch_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/runs/{batch_id}/events": {
+      "get": {
+        "description": "Polling fallback uses the same durable cursor as SSE.",
+        "operationId": "list_events_api_v1_audits_runs__batch_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "After",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Events Api V1 Audits Runs  Batch Id  Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Events",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/runs/{batch_id}/stop": {
+      "post": {
+        "description": "Prevent all further local mutations; continue observing already-running Jules work.",
+        "operationId": "stop_run_api_v1_audits_runs__batch_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop Run",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/runs/{batch_id}/stream": {
+      "get": {
+        "description": "Stream committed events with Last-Event-ID replay and heartbeat comments.",
+        "operationId": "stream_events_api_v1_audits_runs__batch_id__stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "After",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "last-event-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Events",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/settings": {
+      "get": {
+        "description": "Read saved repository choices.",
+        "operationId": "audit_settings_api_v1_audits_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Audit Settings Api V1 Audits Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Audit Settings",
+        "tags": [
+          "audits"
+        ]
+      },
+      "put": {
+        "description": "Persist selected repositories under the owner lock.",
+        "operationId": "save_settings_api_v1_audits_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Save Settings Api V1 Audits Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Settings",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/audits/status": {
+      "get": {
+        "description": "Show worker heartbeat, pause state and centrally enforced quota.",
+        "operationId": "audit_status_api_v1_audits_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Audit Status Api V1 Audits Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Audit Status",
+        "tags": [
+          "audits"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "Issue a bounded HttpOnly owner session after constant-time verification.",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Login Api V1 Auth Login Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "Remove the browser's owner cookie.",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Logout Api V1 Auth Logout Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/api/v1/auth/session": {
+      "get": {
+        "description": "Expose login state without leaking credentials.",
+        "operationId": "owner_session_api_v1_auth_session_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Owner Session Api V1 Auth Session Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Owner Session",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
     "/api/v1/ci-audit/jules": {
       "post": {
         "operationId": "trigger_general_ci_jules_api_v1_ci_audit_jules_post",
@@ -2943,6 +3962,7 @@
         ]
       },
       "post": {
+        "description": "Queue safe repository checks; historical reproduction records remain readable.",
         "operationId": "create_reproduction_api_v1_repositories__repository_id__reproductions_post",
         "parameters": [
           {
@@ -2952,6 +3972,17 @@
             "schema": {
               "format": "uuid",
               "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "title": "Idempotency-Key",
               "type": "string"
             }
           }
@@ -2967,11 +3998,13 @@
           "required": true
         },
         "responses": {
-          "201": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReproductionRun"
+                  "additionalProperties": true,
+                  "title": "Response Create Reproduction Api V1 Repositories  Repository Id  Reproductions Post",
+                  "type": "object"
                 }
               }
             },

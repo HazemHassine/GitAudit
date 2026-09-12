@@ -148,3 +148,125 @@ class ReproductionRunRecord(Base):
     error: Mapped[str | None] = mapped_column(Text)
 
     repository: Mapped[RepositoryRecord] = relationship()
+
+
+class AuditControlRecord(Base):
+    """Singleton lock for queue controls, quota and idempotent mutations."""
+
+    __tablename__ = "audit_control"
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    paused: Mapped[bool] = mapped_column(default=False)
+    selected: Mapped[list] = mapped_column(JSON_DOCUMENT, default=list)
+    heartbeat: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    provider_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AuditBatchRecord(Base):
+    """Durable owner request, deduplicated by its idempotency key."""
+
+    __tablename__ = "audit_batches"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    idempotency_key: Mapped[str] = mapped_column(String(200), unique=True)
+    request_hash: Mapped[str] = mapped_column(String(64))
+    deep_review: Mapped[bool] = mapped_column(default=False)
+    force: Mapped[bool] = mapped_column(default=False)
+    stopped: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class AuditRunRecord(Base):
+    """One repository's evidence and repair state within a batch."""
+
+    __tablename__ = "audit_runs"
+    __table_args__ = (UniqueConstraint("batch_id", "repository_id"),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(ForeignKey("audit_batches.id"), index=True)
+    repository_id: Mapped[UUID] = mapped_column(ForeignKey("repositories.id"), index=True)
+    stage: Mapped[str] = mapped_column(String(40), default="queued", index=True)
+    base_sha: Mapped[str | None] = mapped_column(String(64))
+    branch: Mapped[str | None] = mapped_column(String(255))
+    checks: Mapped[list] = mapped_column(JSON_DOCUMENT, default=list)
+    findings: Mapped[list] = mapped_column(JSON_DOCUMENT, default=list)
+    validation: Mapped[list] = mapped_column(JSON_DOCUMENT, default=list)
+    plan: Mapped[dict | None] = mapped_column(JSON_DOCUMENT)
+    plan_version: Mapped[str | None] = mapped_column(String(64))
+    approved_version: Mapped[str | None] = mapped_column(String(64))
+    source: Mapped[str | None] = mapped_column(Text)
+    session_name: Mapped[str | None] = mapped_column(Text, unique=True)
+    remote_state: Mapped[str | None] = mapped_column(String(50))
+    patch: Mapped[dict | None] = mapped_column(JSON_DOCUMENT)
+    corrections: Mapped[int] = mapped_column(default=0)
+    message: Mapped[str | None] = mapped_column(Text)
+    operation: Mapped[dict | None] = mapped_column(JSON_DOCUMENT)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AuditJobRecord(Base):
+    """Lease with a fencing token; only its current owner may finish it."""
+
+    __tablename__ = "audit_jobs"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("audit_runs.id"), unique=True)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    token: Mapped[str | None] = mapped_column(String(64))
+    attempts: Mapped[int] = mapped_column(default=0)
+    done: Mapped[bool] = mapped_column(default=False)
+
+
+class AuditEventRecord(Base):
+    """Ordered SSE replay and deduplicated provider activities."""
+
+    __tablename__ = "audit_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    batch_id: Mapped[UUID] = mapped_column(ForeignKey("audit_batches.id"), index=True)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("audit_runs.id"), index=True)
+    provider_key: Mapped[str | None] = mapped_column(Text, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    kind: Mapped[str] = mapped_column(String(40))
+    data: Mapped[dict] = mapped_column(JSON_DOCUMENT)
+
+
+class AuditApprovalRecord(Base):
+    """Immutable owner decision attached to the actual plan digest."""
+
+    __tablename__ = "audit_approvals"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    idempotency_key: Mapped[str] = mapped_column(String(200), unique=True)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("audit_runs.id"), index=True)
+    version: Mapped[str] = mapped_column(String(64))
+    decision: Mapped[str] = mapped_column(String(20))
+    feedback: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class AuditReservationRecord(Base):
+    """Uncertain creations keep their quota until positively reconciled."""
+
+    __tablename__ = "audit_reservations"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("audit_runs.id"), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="uncertain")
+
+
+class AuditPRRecord(Base):
+    """Repository-wide publication association and pending write journal."""
+
+    __tablename__ = "audit_prs"
+    repository_id: Mapped[UUID] = mapped_column(ForeignKey("repositories.id"), primary_key=True)
+    branch: Mapped[str] = mapped_column(String(255), unique=True)
+    number: Mapped[int | None] = mapped_column(Integer)
+    url: Mapped[str | None] = mapped_column(Text)
+    head_sha: Mapped[str | None] = mapped_column(String(64))
+    pending: Mapped[dict | None] = mapped_column(JSON_DOCUMENT)
+
+
+class AuditCacheRecord(Base):
+    """Deterministic results keyed by source, configuration and tools."""
+
+    __tablename__ = "audit_cache"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    checks: Mapped[list] = mapped_column(JSON_DOCUMENT)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

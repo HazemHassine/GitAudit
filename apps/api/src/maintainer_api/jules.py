@@ -1,15 +1,13 @@
 """One Jules session adapter for all audit areas.
 
-Session history is intentionally process-local for now. It records requests made
-through this API and never invents remote activity or pull requests.
+Previews are process-local. Live requests delegate to durable audit runs and the
+central quota service; this compatibility adapter never creates provider sessions.
 """
 
 import os
-import re
 from datetime import UTC, datetime
 from uuid import uuid4
 
-import httpx
 import structlog
 
 from .config import Settings, get_settings
@@ -19,14 +17,14 @@ from .jules_prompts import build_jules_prompt, get_jules_audit_definition
 logger = structlog.get_logger(__name__)
 
 JULES_API_BASE_URL = "https://jules.googleapis.com/v1alpha"
-_JULES_SESSION_NAME = re.compile(r"sessions/[A-Za-z0-9_-]+$")
 
 
 class JulesAuditService:
     """Creates preview or live Jules sessions through a single audited interface."""
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(self, settings: Settings | None = None, factory=None) -> None:
         self.settings = settings or get_settings()
+        self.factory = factory
         self._sessions: dict[str, JulesAuditSession] = {}
 
     def list_sessions(self) -> list[JulesAuditSession]:
@@ -59,75 +57,57 @@ class JulesAuditService:
             self._store(session)
             return session
 
-        api_key = self._api_key()
-        if not api_key:
-            session = JulesAuditSession(
-                session_id=f"unavailable-{uuid4().hex[:8]}",
-                audit_area=request.audit_area,
-                title=definition.title,
-                status=JulesSessionStatus.UNAVAILABLE,
-                created_at=now,
-                focus=request.focus,
-                plan_status="Jules is not configured on this API instance.",
-                activity=["Set JULES_API_KEY before requesting a live review."],
-                prompt=prompt,
+        if not self._api_key():
+            result = JulesAuditSession(
+                session_id=f"unavailable-{uuid4().hex[:8]}", audit_area=request.audit_area,
+                title=definition.title, status=JulesSessionStatus.UNAVAILABLE, created_at=now,
+                focus=request.focus, plan_status="Jules is not configured on this API instance.",
+                activity=["Set JULES_API_KEY to enable repair planning."], prompt=prompt,
             )
-            self._store(session)
-            return session
-
-        payload = {
-            "prompt": prompt,
-            "sourceContext": {
-                "source": f"sources/github/{self.settings.jules_source_repository}",
-                "githubRepoContext": {"startingBranch": self.settings.jules_starting_branch},
-            },
-            "automationMode": "AUTO_CREATE_PR",
-            "requirePlanApproval": True,
-        }
-        try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
-                response = await client.post(
-                    f"{JULES_API_BASE_URL}/sessions",
-                    headers={
-                        "X-Goog-Api-Key": api_key,
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
-            if response.status_code not in (200, 201):
-                session = self._failed_session(
-                    request, definition.title, prompt, now,
-                    f"Jules rejected the session request (HTTP {response.status_code}).",
-                )
-            else:
-                data = response.json()
-                name = data.get("name") if isinstance(data, dict) else None
-                if not isinstance(name, str) or not _JULES_SESSION_NAME.fullmatch(name):
-                    session = self._failed_session(
-                        request, definition.title, prompt, now,
-                        "Jules returned no valid session name.",
-                    )
-                else:
-                    session = JulesAuditSession(
-                        session_id=name,
-                        audit_area=request.audit_area,
-                        title=definition.title,
-                        status=JulesSessionStatus.QUEUED,
-                        created_at=now,
-                        focus=request.focus,
-                        plan_status="Jules session created; waiting for plan approval.",
-                        activity=["Live review request accepted by Jules.", "Plan approval is required before changes."],
-                        prompt=prompt,
-                        url=f"https://jules.google.com/session/{name.split('/', maxsplit=1)[1]}",
-                    )
-        except (httpx.HTTPError, OSError, RuntimeError, ValueError) as exc:
-            logger.warning("jules_session_request_failed", error_type=type(exc).__name__)
-            session = self._failed_session(
-                request, definition.title, prompt, now, "Jules service invocation failed."
+            self._store(result)
+            return result
+        if self.factory is None:
+            return self._failed_session(
+                request,
+                definition.title,
+                prompt,
+                now,
+                "Use the authenticated audit backend for live requests",
             )
+        from fastapi import HTTPException
+        from sqlalchemy import select
 
-        self._store(session)
-        return session
+        from .audit_service import create_batch
+        from .database import AuditControlRecord, RepositoryRecord
+
+        async with self.factory() as database:
+            control = await database.get(AuditControlRecord, 1)
+            selected = control.selected if control else []
+            records = (await database.scalars(select(RepositoryRecord))).all()
+            target = [r for r in records if str(r.id) in selected]
+            if len(target) != 1:
+                raise HTTPException(
+                    409, "Select one repository in Audits, or create a multi-repository audit there"
+                )
+            if not request.idempotency_key:
+                raise HTTPException(422, "Live launch requires idempotency_key")
+            batch = await create_batch(
+                database, [target[0].id], request.idempotency_key, deep_review=True
+            )
+        result = JulesAuditSession(
+            session_id=f"audit-{batch.id}",
+            audit_area=request.audit_area,
+            title=definition.title,
+            status=JulesSessionStatus.QUEUED,
+            created_at=now,
+            focus=request.focus,
+            plan_status="Queued through the durable audit service; quota and plan approval apply.",
+            activity=["Audit queued; deterministic checks precede any Jules session."],
+            prompt=prompt,
+            url=f"{self.settings.public_web_url}/audits/runs/{batch.id}",
+        )
+        self._store(result)
+        return result
 
     def _failed_session(
         self,

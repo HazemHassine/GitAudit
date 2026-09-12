@@ -251,6 +251,7 @@ class CoverageService:
                 audit_area=JulesAuditArea.COVERAGE,
                 focus=f"{focus}; target coverage: {req.target_coverage}%",
                 dry_run=req.dry_run,
+                idempotency_key=req.idempotency_key,
             )
         )
         session = self._to_coverage_session(audit_session)

@@ -1,4 +1,5 @@
 import asyncio
+import re
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -7,7 +8,7 @@ from uuid import UUID, uuid4
 
 import structlog
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .database import RepositoryRecord, ReproductionRunRecord
 from .domain import (
@@ -18,6 +19,8 @@ from .domain import (
     ScanStatus,
 )
 from .github import GitHubReader
+from .sandbox import SandboxError
+from .sandbox import command as trusted_command
 
 logger = structlog.get_logger(__name__)
 
@@ -53,7 +56,6 @@ class DockerSandboxRunner:
         "unknown": "ubuntu:22.04",
     }
 
-
     def __init__(self, run_id: UUID, commit_sha: str, clone_url: str):
         self.run_id = run_id
         self.commit_sha = commit_sha
@@ -62,76 +64,85 @@ class DockerSandboxRunner:
         self._process: asyncio.subprocess.Process | None = None
 
     async def prepare_workspace(self, emit_event) -> None:
-        await emit_event(ReproductionPhase.PREPARING_WORKSPACE, f"Creating temp dir {self.work_dir}", "info")
-        self.work_dir.mkdir(parents=True, exist_ok=True)
-        # Clone using shallow depth
-        git_cmd = f"git clone --filter=tree:0 {self.clone_url} . && git fetch --depth=1 origin {self.commit_sha} && git checkout {self.commit_sha}"
-        await emit_event(ReproductionPhase.PREPARING_WORKSPACE, f"Cloning repository and checking out {self.commit_sha[:7]}", "info")
-        
-        proc = await asyncio.create_subprocess_shell(
-            git_cmd, cwd=self.work_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        await emit_event(
+            ReproductionPhase.PREPARING_WORKSPACE, f"Creating temp dir {self.work_dir}", "info"
         )
-        stdout, _ = await proc.communicate()
-        if proc.returncode != 0:
-            output = stdout.decode() if stdout else ""
-            await emit_event(ReproductionPhase.PREPARING_WORKSPACE, f"Failed to checkout commit: {output}", "error")
-            raise RuntimeError("Failed to prepare workspace")
+        self.work_dir.mkdir(parents=True, exist_ok=True)
+        if not re.fullmatch(r"[0-9a-fA-F]{7,64}", self.commit_sha):
+            raise SandboxError("Invalid commit SHA")
+        if not re.fullmatch(
+            r"https://github.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?", self.clone_url
+        ):
+            raise SandboxError("Invalid GitHub clone URL")
+        for argv in (
+            ["git", "init", "."],
+            [
+                "git",
+                "-c",
+                "protocol.file.allow=never",
+                "fetch",
+                "--depth=1",
+                self.clone_url,
+                self.commit_sha,
+            ],
+            ["git", "-c", "core.hooksPath=/dev/null", "checkout", "--detach", "FETCH_HEAD"],
+        ):
+            code, output = await trusted_command(*argv, cwd=self.work_dir)
+            if code:
+                raise SandboxError(f"Failed to prepare workspace: {output}")
 
     async def run_command(self, stack: str, command: str, emit_event, queue: asyncio.Queue) -> int:
-        await emit_event(ReproductionPhase.EXECUTING_SANDBOX, f"Executing in sandbox: {command}", "info")
-        image = self.IMAGE_MAP.get(stack, "ubuntu:22.04")
-        
-        docker_cmd = (
-            f"docker run --rm -v {self.work_dir.absolute()}:/workspace -w /workspace "
-            f"--memory=2g --cpus=2 {image} sh -c '{command}'"
+        """Execute only inside Docker; unavailable Docker is an explicit failure."""
+        await emit_event(
+            ReproductionPhase.EXECUTING_SANDBOX, f"Executing in sandbox: {command}", "info"
         )
-        
-        # Try Docker first
-        self._process = await asyncio.create_subprocess_shell(
-            docker_cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
-        
-        async def stream_output():
-            if not self._process or not self._process.stdout:
-                return
-            while True:
-                line = await self._process.stdout.readline()
-                if not line:
-                    break
-                decoded_line = line.decode('utf-8', errors='replace').rstrip('\r\n')
-                await emit_event(ReproductionPhase.EXECUTING_SANDBOX, decoded_line, "stdout")
-                await queue.put({"event": "stdout", "data": decoded_line})
-
-        await asyncio.gather(stream_output())
-        
-        await self._process.wait()
-        
-        # If Docker fails (e.g. not installed or image pull issue), fallback to local run for tests to pass if docker isn't available
-        if self._process.returncode == 127: # command not found for docker
-             await emit_event(ReproductionPhase.EXECUTING_SANDBOX, "Docker not found, falling back to local execution", "warning")
-             self._process = await asyncio.create_subprocess_shell(
-                 command,
-                 cwd=self.work_dir,
-                 stdout=asyncio.subprocess.PIPE,
-                 stderr=asyncio.subprocess.STDOUT,
-             )
-             await asyncio.gather(stream_output())
-             await self._process.wait()
-
-        return self._process.returncode or 0
+        name = f"gitaudit-reproduction-{self.run_id.hex}"
+        try:
+            code, output = await trusted_command(
+                "docker",
+                "run",
+                "--rm",
+                "--name",
+                name,
+                "--network=none",
+                "--memory=2g",
+                "--memory-swap=2g",
+                "--cpus=2",
+                "--pids-limit=256",
+                "--cap-drop=ALL",
+                "--security-opt=no-new-privileges",
+                "--read-only",
+                "--tmpfs",
+                "/tmp:rw,nosuid,size=512m",
+                "--mount",
+                f"type=bind,src={self.work_dir.absolute()},dst=/workspace",
+                "--workdir",
+                "/workspace",
+                self.IMAGE_MAP.get(stack, "ubuntu:22.04"),
+                "sh",
+                "-c",
+                command,
+                timeout=600,
+            )
+            await emit_event(ReproductionPhase.EXECUTING_SANDBOX, output, "stdout")
+            await queue.put({"event": "stdout", "data": output})
+            return code
+        finally:
+            try:
+                await trusted_command("docker", "rm", "-f", name)
+            except SandboxError:
+                pass
 
     def cleanup(self) -> None:
         if self.work_dir.exists():
             shutil.rmtree(self.work_dir, ignore_errors=True)
-            
+
     async def cancel(self) -> None:
-        if self._process:
-            try:
-                self._process.terminate()
-            except ProcessLookupError:
-                pass
+        """Remove the explicitly named execution container."""
+        try:
+            await trusted_command("docker", "rm", "-f", f"gitaudit-reproduction-{self.run_id.hex}")
+        except SandboxError:
+            pass
 
 
 class ReproductionService:
@@ -156,7 +167,10 @@ class ReproductionService:
                 del self._event_queues[run_id]
 
     async def start_reproduction(
-        self, session: AsyncSession, repository: RepositoryRecord, request_data: CreateReproductionRequest
+        self,
+        session: AsyncSession,
+        repository: RepositoryRecord,
+        request_data: CreateReproductionRequest,
     ) -> ReproductionRun:
         run_id = uuid4()
         commit_sha = request_data.commit_sha or repository.default_branch_sha
@@ -185,20 +199,35 @@ class ReproductionService:
 
         # Start workflow in background
         task = asyncio.create_task(
-            self._execute_workflow(session, record.id, runner, repository, request_data)
+            self._execute_owned(
+                async_sessionmaker(session.bind, expire_on_commit=False),
+                record.id,
+                runner,
+                repository,
+                request_data,
+            )
         )
         self._background_tasks[run_id] = task
 
         return self._to_domain(record)
 
-    async def _emit_event(self, session: AsyncSession, run_id: UUID, phase: ReproductionPhase, message: str, level: str = "info") -> None:
+    async def _execute_owned(self, factory, run_id, runner, repository, request_data):
+        """Background work owns its database session independently of the request."""
+        async with factory() as session:
+            await self._execute_workflow(session, run_id, runner, repository, request_data)
+
+    async def _emit_event(
+        self,
+        session: AsyncSession,
+        run_id: UUID,
+        phase: ReproductionPhase,
+        message: str,
+        level: str = "info",
+    ) -> None:
         event = ReproductionEvent(
-            timestamp=datetime.now(UTC).isoformat(),
-            phase=phase,
-            message=message,
-            level=level
+            timestamp=datetime.now(UTC).isoformat(), phase=phase, message=message, level=level
         )
-        
+
         stmt = select(ReproductionRunRecord).where(ReproductionRunRecord.id == run_id)
         result = await session.execute(stmt)
         record = result.scalar_one_or_none()
@@ -214,17 +243,34 @@ class ReproductionService:
                 await q.put({"event": "status", "data": event.model_dump_json()})
 
     async def _execute_workflow(
-        self, session: AsyncSession, run_id: UUID, runner: DockerSandboxRunner, repository: RepositoryRecord, request_data: CreateReproductionRequest
+        self,
+        session: AsyncSession,
+        run_id: UUID,
+        runner: DockerSandboxRunner,
+        repository: RepositoryRecord,
+        request_data: CreateReproductionRequest,
     ) -> None:
         try:
             # Phase: Fetching Logs
-            await self._emit_event(session, run_id, ReproductionPhase.FETCHING_LOGS, "Fetching CI logs", "info")
+            await self._emit_event(
+                session, run_id, ReproductionPhase.FETCHING_LOGS, "Fetching CI logs", "info"
+            )
             if request_data.job_id:
-                logs = await self.github.job_logs(repository.owner, repository.name, request_data.job_id)
+                logs = await self.github.job_logs(
+                    repository.owner, repository.name, request_data.job_id
+                )
                 summary = f"Fetched {len(logs)} bytes of logs for job {request_data.job_id}"
-                await self._emit_event(session, run_id, ReproductionPhase.FETCHING_LOGS, summary, "info")
+                await self._emit_event(
+                    session, run_id, ReproductionPhase.FETCHING_LOGS, summary, "info"
+                )
             else:
-                await self._emit_event(session, run_id, ReproductionPhase.FETCHING_LOGS, "No job ID provided, skipping logs", "info")
+                await self._emit_event(
+                    session,
+                    run_id,
+                    ReproductionPhase.FETCHING_LOGS,
+                    "No job ID provided, skipping logs",
+                    "info",
+                )
 
             # Phase: Preparing Workspace
             await runner.prepare_workspace(
@@ -232,10 +278,22 @@ class ReproductionService:
             )
 
             # Phase: Detecting Stack
-            await self._emit_event(session, run_id, ReproductionPhase.DETECTING_STACK, "Detecting project stack", "info")
+            await self._emit_event(
+                session,
+                run_id,
+                ReproductionPhase.DETECTING_STACK,
+                "Detecting project stack",
+                "info",
+            )
             stack, default_cmd = StackDetector.detect(str(runner.work_dir))
-            await self._emit_event(session, run_id, ReproductionPhase.DETECTING_STACK, f"Detected stack: {stack}", "info")
-            
+            await self._emit_event(
+                session,
+                run_id,
+                ReproductionPhase.DETECTING_STACK,
+                f"Detected stack: {stack}",
+                "info",
+            )
+
             command = request_data.custom_command or default_cmd
 
             # Update DB with stack and command
@@ -250,15 +308,19 @@ class ReproductionService:
             # Phase: Executing Sandbox
             queue = asyncio.Queue()
             exit_code = await runner.run_command(
-                stack, 
+                stack,
                 command,
                 lambda phase, msg, lvl: self._emit_event(session, run_id, phase, msg, lvl),
-                queue
+                queue,
             )
 
-            final_phase = ReproductionPhase.COMPLETED if exit_code == 0 else ReproductionPhase.FAILED
+            final_phase = (
+                ReproductionPhase.COMPLETED if exit_code == 0 else ReproductionPhase.FAILED
+            )
             status = ScanStatus.COMPLETED if exit_code == 0 else ScanStatus.FAILED
-            await self._emit_event(session, run_id, final_phase, f"Command exited with code {exit_code}", "info")
+            await self._emit_event(
+                session, run_id, final_phase, f"Command exited with code {exit_code}", "info"
+            )
 
             # Finalize DB
             stmt = select(ReproductionRunRecord).where(ReproductionRunRecord.id == run_id)
@@ -272,7 +334,13 @@ class ReproductionService:
                 await session.commit()
 
         except asyncio.CancelledError:
-            await self._emit_event(session, run_id, ReproductionPhase.CANCELLED, "Reproduction run was cancelled", "warning")
+            await self._emit_event(
+                session,
+                run_id,
+                ReproductionPhase.CANCELLED,
+                "Reproduction run was cancelled",
+                "warning",
+            )
             stmt = select(ReproductionRunRecord).where(ReproductionRunRecord.id == run_id)
             result = await session.execute(stmt)
             record = result.scalar_one_or_none()
@@ -284,7 +352,9 @@ class ReproductionService:
                 await session.commit()
         except Exception as e:
             logger.exception("Reproduction failed", exc_info=e)
-            await self._emit_event(session, run_id, ReproductionPhase.FAILED, f"Error: {e!s}", "error")
+            await self._emit_event(
+                session, run_id, ReproductionPhase.FAILED, f"Error: {e!s}", "error"
+            )
             stmt = select(ReproductionRunRecord).where(ReproductionRunRecord.id == run_id)
             result = await session.execute(stmt)
             record = result.scalar_one_or_none()
@@ -298,7 +368,7 @@ class ReproductionService:
             runner.cleanup()
             self._active_runners.pop(run_id, None)
             self._background_tasks.pop(run_id, None)
-            
+
             # Send completion event
             if run_id in self._event_queues:
                 for q in self._event_queues[run_id]:
@@ -317,7 +387,7 @@ class ReproductionService:
         record = result.scalar_one_or_none()
         if not record:
             raise ValueError("Reproduction run not found")
-        
+
         record.status = ScanStatus.FAILED.value
         record.current_phase = ReproductionPhase.CANCELLED.value
         record.error = "Cancelled by user"
@@ -333,13 +403,20 @@ class ReproductionService:
             raise ValueError("Reproduction run not found")
         return self._to_domain(record)
 
-    async def list_reproductions(self, session: AsyncSession, repository_id: UUID) -> list[ReproductionRun]:
-        stmt = select(ReproductionRunRecord).where(ReproductionRunRecord.repository_id == repository_id).order_by(ReproductionRunRecord.started_at.desc())
+    async def list_reproductions(
+        self, session: AsyncSession, repository_id: UUID
+    ) -> list[ReproductionRun]:
+        stmt = (
+            select(ReproductionRunRecord)
+            .where(ReproductionRunRecord.repository_id == repository_id)
+            .order_by(ReproductionRunRecord.started_at.desc())
+        )
         result = await session.execute(stmt)
         return [self._to_domain(record) for record in result.scalars()]
 
     def stream_reproduction(self, run_id: UUID):
         q = self._subscribe(run_id)
+
         async def event_generator():
             try:
                 while True:
@@ -349,6 +426,7 @@ class ReproductionService:
                         break
             finally:
                 self._unsubscribe(run_id, q)
+
         return event_generator()
 
     def _to_domain(self, record: ReproductionRunRecord) -> ReproductionRun:
@@ -367,5 +445,5 @@ class ReproductionService:
             output_logs=record.output_logs,
             started_at=record.started_at,
             completed_at=record.completed_at,
-            error=record.error
+            error=record.error,
         )

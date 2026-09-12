@@ -88,7 +88,11 @@ def test_get_local_workflows_detects_both_yml_and_yaml(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_ci_audit_endpoints() -> None:
+async def test_ci_audit_endpoints(monkeypatch) -> None:
+    from pydantic import SecretStr
+
+    from maintainer_api.main import settings
+    monkeypatch.setattr(settings, "owner_password", SecretStr("fixture-owner-password"))
     mock_session = AsyncMock()
     mock_session.get.return_value = None
 
@@ -97,7 +101,7 @@ async def test_ci_audit_endpoints() -> None:
 
     app.dependency_overrides[database_session] = override_database_session
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", headers={"Authorization": "Bearer fixture-owner-password"}) as client:
             # Summary endpoint (local workspace GET and POST re-run)
             res = await client.get("/api/v1/ci-audit/summary")
             assert res.status_code == 200

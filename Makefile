@@ -36,7 +36,7 @@ db-upgrade:
 lint-ci:
 	$(VENV_ACTIONLINT)
 
-test:
+test: lint-audit-docstrings
 	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 $(VENV_PYTHON) -m pytest -p pytest_asyncio.plugin -p pytest_cov --cov=maintainer_api --cov-report=term-missing --cov-report=xml --cov-fail-under=80 apps/api/tests
 	$(VENV_PYTHON) -m ruff check apps/api/src apps/api/tests
 	$(VENV_ACTIONLINT)
@@ -75,3 +75,7 @@ lint-docker:
 
 lint-iac: validate-compose
 	docker run --rm -v "$(CURDIR)/apps/api/Dockerfile:/work/api/Dockerfile:ro" -v "$(CURDIR)/apps/web/Dockerfile:/work/web/Dockerfile:ro" bridgecrew/checkov:3.2.471 --framework dockerfile --directory /work --quiet
+
+.PHONY: lint-audit-docstrings
+lint-audit-docstrings:
+	$(VENV_PYTHON) -m ruff check --isolated --select D100,D101,D102,D103 apps/api/src/maintainer_api/audit_*.py apps/api/src/maintainer_api/sandbox.py apps/api/src/maintainer_api/worker_health.py

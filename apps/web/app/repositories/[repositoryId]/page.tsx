@@ -5,8 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Navigation } from "../../components/Navigation";
-import CoverageCard from "../../components/CoverageCard";
-import CiPipelinesAuditCard from "../../components/CiPipelinesAuditCard";
+import { HealthDashboard } from "../../components/HealthDashboard";
 import {
   type CurationAssessment,
   type Repository,
@@ -142,13 +141,14 @@ export default function RepositoryReport() {
     setBusy(true);
     setError(null);
     try {
-      const run = await request<ReproductionRun>(`/api/v1/reproductions`, {
+      const run = await request<{ id: string }>(`/api/v1/audits/runs`, {
+        headers: { "Idempotency-Key": `repository-audit-${repositoryId}-${repository?.default_branch_sha}` },
         method: "POST",
         body: JSON.stringify({
-          commit_sha: repository?.default_branch_sha || undefined,
+          repository_ids: [repositoryId],
         }),
       });
-      router.push(`/repositories/${repositoryId}/reproductions/${run.id}`);
+      router.push(`/audits/runs/${run.id}`);
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Reproduction failed";
       await load();
@@ -373,8 +373,7 @@ export default function RepositoryReport() {
 
         {/* Audit Sentinels & AI Diagnostics (Issues #2 - #10) */}
         <section className="sentinelsSection" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <CoverageCard repositoryId={repositoryId} />
-          <CiPipelinesAuditCard repositoryId={repositoryId} />
+          <HealthDashboard repositoryId={repositoryId} />
         </section>
 
         <section className="reportGrid">
