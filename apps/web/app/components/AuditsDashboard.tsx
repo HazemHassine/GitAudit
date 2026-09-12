@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { API_URL, type Repository, request } from "../lib/api";
+import { getApiUrl, type Repository, request } from "../lib/api";
 import type { AuditSnapshot, RepositoryAuditResult } from "../lib/audit-types";
 import { Navigation } from "./Navigation";
 import { OwnerLogin } from "./OwnerLogin";
@@ -58,7 +58,7 @@ export function AuditsDashboard({ runId }: { runId?: string }) {
     if (!signedIn) return;
     const poll = setInterval(() => void refresh(), 5000);
     if (!runId) return () => clearInterval(poll);
-    const stream = new EventSource(`${API_URL}/api/v1/audits/runs/${runId}/stream`, { withCredentials: true });
+    const stream = new EventSource(`${getApiUrl()}/api/v1/audits/runs/${runId}/stream`, { withCredentials: true });
     stream.addEventListener("audit", e => {
       const activity: AuditEvent = JSON.parse(e.data);
       setEvents(previous => previous.some(x => x.id === activity.id) ? previous : [...previous, activity].slice(-300));

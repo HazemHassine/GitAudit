@@ -113,16 +113,18 @@ class GitHubAuditClient:
         params: dict | None = None,
     ) -> dict | list:
         """Use trusted authentication only on the configured GitHub API origin."""
+        subpath = f"/{path.lstrip('/')}" if path else ""
         response = await self.reader._client.request(
             method,
-            f"{self.reader._base_url}/repos/{repo}/{path}",
+            f"{self.reader._base_url}/repos/{repo}{subpath}",
             headers=await self.reader._headers(),
             json=data,
             params=params,
         )
         if response.is_error:
+            target = path.strip("/").split("/")[0] if path.strip("/") else "repository"
             raise ProviderError(
-                f"GitHub {path.split('/')[0]} returned HTTP {response.status_code}",
+                f"GitHub {target} returned HTTP {response.status_code}",
                 response.status_code,
             )
         return response.json() if response.content else {}

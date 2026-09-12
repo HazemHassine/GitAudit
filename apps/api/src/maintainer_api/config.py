@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import AnyHttpUrl, Field, SecretStr
+from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,7 +18,35 @@ class Settings(BaseSettings):
     github_app_private_key_path: str | None = None
     github_installation_id: int | None = None
     github_app_slug: str | None = None
-    cors_origins: str = "http://localhost:3000"
+
+    @field_validator(
+        "github_installation_id",
+        "github_app_id",
+        "github_app_private_key_path",
+        "github_app_slug",
+        mode="before",
+    )
+    @classmethod
+    def empty_str_to_none(cls, value: object) -> object:
+        if value == "" or value is None:
+            return None
+        return value
+
+    @field_validator(
+        "github_token",
+        "github_app_private_key",
+        "openai_api_key",
+        "jules_api_key",
+        "owner_password",
+        "owner_session_secret",
+        mode="before",
+    )
+    @classmethod
+    def empty_secret_to_none(cls, value: object) -> object:
+        if value == "" or value is None:
+            return None
+        return value
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     log_level: str = "INFO"
     auto_scan_on_startup: bool = True
     auto_scan_interval_minutes: int = 0

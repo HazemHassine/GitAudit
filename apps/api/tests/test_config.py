@@ -30,3 +30,30 @@ def test_openai_configuration_is_server_owned() -> None:
     assert missing.openai_configured is False
     assert configured.openai_configured is True
     assert configured.openai_model == "test-model"
+
+
+def test_empty_strings_coerced_to_none() -> None:
+    settings = Settings(
+        _env_file=None,
+        github_installation_id="",
+        github_app_id="",
+        github_token="",
+        openai_api_key="",
+        jules_api_key="",
+    )
+
+    assert settings.github_installation_id is None
+    assert settings.github_app_id is None
+    assert settings.github_token is None
+    assert settings.openai_api_key is None
+    assert settings.jules_api_key is None
+    assert settings.github_configured is False
+
+
+def test_allowed_origins_defaults_and_parsing() -> None:
+    defaults = Settings(_env_file=None)
+    assert "http://localhost:3000" in defaults.allowed_origins
+    assert "http://127.0.0.1:3000" in defaults.allowed_origins
+
+    custom = Settings(_env_file=None, cors_origins="http://example.com , http://test.local ")
+    assert custom.allowed_origins == ["http://example.com", "http://test.local"]

@@ -1,4 +1,23 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
+export function getApiUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
+  if (typeof window !== "undefined") {
+    try {
+      const parsed = new URL(configured, window.location.origin);
+      if (
+        (parsed.hostname === "localhost" && window.location.hostname === "127.0.0.1") ||
+        (parsed.hostname === "127.0.0.1" && window.location.hostname === "localhost")
+      ) {
+        parsed.hostname = window.location.hostname;
+        return parsed.origin;
+      }
+    } catch {
+      // fallback to configured if URL parse fails
+    }
+  }
+  return configured;
+}
+
+export const API_URL = typeof window !== "undefined" ? getApiUrl() : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001");
 
 export type SignalStatus = "pass" | "fail" | "unknown" | "unavailable";
 export type RepositoryStatus =
@@ -267,7 +286,7 @@ export type DashboardActivity = {
 };
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${getApiUrl()}${path}`, {
     credentials: "include",
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },

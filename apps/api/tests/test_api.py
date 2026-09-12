@@ -84,3 +84,19 @@ async def test_exception_handlers() -> None:
     res6 = await curation_error_handler(dummy_request, CurationError("Generic AI error"))
     assert res6.status_code == 502
 
+
+async def test_cors_preflight_allows_both_localhost_and_127_0_0_1() -> None:
+    from httpx import ASGITransport, AsyncClient
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        for origin in ("http://localhost:3000", "http://127.0.0.1:3000"):
+            res = await client.options(
+                "/api/v1/settings/github",
+                headers={
+                    "Origin": origin,
+                    "Access-Control-Request-Method": "GET",
+                },
+            )
+            assert res.status_code == 200, f"Expected 200 for origin {origin}, got {res.status_code}"
+            assert res.headers.get("access-control-allow-origin") == origin
+

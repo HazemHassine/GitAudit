@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  API_URL,
+  getApiUrl,
   ReproductionRun,
   ReproductionPhase,
   ReproductionEvent,
@@ -55,7 +55,7 @@ export default function ReproductionRunPage({
 
     const startEventSource = () => {
       eventSource = new EventSource(
-        `${API_URL}/api/v1/reproductions/${resolvedParams.reproductionId}/stream`
+        `${getApiUrl()}/api/v1/reproductions/${resolvedParams.reproductionId}/stream`
       );
 
       eventSource.onmessage = (e) => {

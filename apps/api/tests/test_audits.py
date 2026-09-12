@@ -675,6 +675,31 @@ async def test_security_evidence_never_persists_raw_secrets():
     assert results[-1]["status"] == "fail"
 
 
+async def test_github_audit_client_head_formats_url_without_trailing_slash():
+    requested_urls = []
+
+    def handle(request):
+        requested_urls.append(str(request.url))
+        if request.url.path == "/repos/owner/repo":
+            return httpx.Response(200, json={"default_branch": "main"})
+        if request.url.path == "/repos/owner/repo/commits/main":
+            return httpx.Response(200, json={"sha": "abc123def456"})
+        return httpx.Response(404)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+        github = GitHubAuditClient(
+            HttpGitHubReader(Settings(_env_file=None, github_token="fixture"), client)
+        )
+        branch, sha = await github.head("owner/repo")
+        assert branch == "main"
+        assert sha == "abc123def456"
+
+    assert "https://api.github.com/repos/owner/repo" in requested_urls
+    assert not any(url.endswith("/repos/owner/repo/") for url in requested_urls)
+
+
+
+
 async def test_owner_api_login_replay_settings_decisions_stop_and_history(factory, monkeypatch):
     """Exercise the authenticated API surface and replay cursors against persisted data."""
     from pydantic import SecretStr
