@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     if: inputs.execution == 'preview'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -54,7 +54,7 @@ jobs:
     if: inputs.execution == 'live'
     runs-on: [self-hosted, gitaudit]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Queue audit with backend quota enforcement
         env:
           GITAUDIT_OWNER_PASSWORD: ${{ secrets.GITAUDIT_OWNER_PASSWORD }}
