@@ -19,7 +19,7 @@ dependencies = [
   "pydantic-settings>=2.5,<3",
   "sqlalchemy[asyncio]>=2.0,<3",
   "asyncpg>=0.29,<1",
-  "structlog>=24.4,<26",
+  "structlog>=24.4,<27",
   "uvicorn[standard]>=0.30,<1",
 ]
 
