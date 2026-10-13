@@ -52,12 +52,12 @@ jobs:
       - name: Production build (Web & API)
         run: make build
       - name: Lint API Dockerfile (Hadolint)
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: apps/api/Dockerfile
           config: .hadolint.yaml
       - name: Lint Web Dockerfile (Hadolint)
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: apps/web/Dockerfile
           config: .hadolint.yaml
